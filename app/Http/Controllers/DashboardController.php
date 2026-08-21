@@ -167,6 +167,7 @@ class DashboardController extends Controller
             'newTaskCount' => (clone $base)
                 ->whereIn('status', [PerjalananDinas::STATUS_READY, PerjalananDinas::STATUS_REJECTED])
                 ->count(),
+            'hasSignature' => $request->user()->hasSignature(),
         ]);
     }
 

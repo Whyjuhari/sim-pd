@@ -3,6 +3,14 @@
 @section('brand', 'E-PERJADIN')
 
 @section('content')
+    @if (session('warning'))
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
+            {{ session('warning') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+        </div>
+    @endif
+
     <div class="card bg-identity text-white shadow-sm mb-4">
         <div class="card-body d-flex justify-content-between align-items-center p-4">
             <div>
@@ -71,14 +79,25 @@
 
                                 <div class="d-flex flex-wrap gap-2">
                                     @if ($travel->laporan)
-                                        <a target="_blank"
-                                            href="{{ route('documents.laporan-perjadin', [
-                                                'id' => $travel->id,
-                                            ]) }}"
-                                            class="btn btn-outline-success btn-sm">
-                                            <i class="bi bi-file-earmark-text"></i>
-                                            Cetak Laporan
-                                        </a>
+                                        @if ($hasSignature)
+                                            <a target="_blank"
+                                                href="{{ route('documents.laporan-perjadin', [
+                                                    'id' => $travel->id,
+                                                ]) }}"
+                                                class="btn btn-outline-success btn-sm">
+                                                <i class="bi bi-file-earmark-text"></i>
+                                                Cetak Laporan
+                                            </a>
+                                        @else
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled
+                                                title="Tanda tangan belum tersedia">
+                                                <i class="bi bi-file-earmark-text"></i>
+                                                Cetak Laporan
+                                            </button>
+                                            <span class="small text-warning-emphasis align-self-center">
+                                                Tanda tangan belum tersedia. Hubungi Admin.
+                                            </span>
+                                        @endif
                                     @endif
                                     @can('printSuratTugas', $travel)
                                         <a target="_blank"

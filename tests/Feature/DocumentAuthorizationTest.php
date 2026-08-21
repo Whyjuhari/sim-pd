@@ -151,6 +151,35 @@ class DocumentAuthorizationTest extends TestCase
             ->assertHeader('content-type', 'application/pdf');
     }
 
+    public function test_report_without_signature_returns_to_dashboard_with_clear_message(): void
+    {
+        Storage::fake('local');
+
+        $owner = User::factory()->create();
+        $travel = $this->createTravel($owner, PerjalananDinas::STATUS_APPROVED);
+        $travel->laporan()->create([
+            'hasil_pelaksanaan' => 'Kegiatan perjalanan dinas terlaksana dengan baik.',
+            'kesimpulan' => 'Tujuan perjalanan dinas telah tercapai.',
+            'tanggal_laporan' => '2026-08-20',
+        ]);
+
+        $documentUrl = route('documents.laporan-perjadin', ['id' => $travel->id]);
+
+        $this->actingAs($owner)
+            ->get($documentUrl)
+            ->assertRedirect(route('dashboard.user'))
+            ->assertSessionHas(
+                'warning',
+                'Laporan belum dapat dicetak karena tanda tangan Anda belum tersedia. Silakan hubungi Admin.'
+            );
+
+        $this->actingAs($owner)
+            ->get(route('dashboard.user'))
+            ->assertOk()
+            ->assertSee('Tanda tangan belum tersedia. Hubungi Admin.')
+            ->assertDontSee($documentUrl, false);
+    }
+
     private function createTravel(
         User $owner,
         string $status,

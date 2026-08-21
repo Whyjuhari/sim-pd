@@ -10,6 +10,7 @@ use App\Services\Documents\LumpsumXlsxGenerator;
 use App\Services\Documents\PdfConverter;
 use App\Services\Documents\SppdXlsxGenerator;
 use App\Services\Documents\SuratTugasDocxGenerator;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -264,7 +265,7 @@ class DocumentController extends Controller
     }
     public function laporanPerjadin(
         Request $request
-    ): BinaryFileResponse {
+    ): BinaryFileResponse|RedirectResponse {
         // dd($request->all());
         $id =
             $request->validate([
@@ -280,6 +281,15 @@ class DocumentController extends Controller
                 $id,
                 (int) $request->user()->id
             );
+
+        if (! $data['ttd_absolute_path']) {
+            return redirect()
+                ->route('dashboard.user')
+                ->with(
+                    'warning',
+                    'Laporan belum dapat dicetak karena tanda tangan Anda belum tersedia. Silakan hubungi Admin.'
+                );
+        }
 
 
         $documents =
@@ -447,13 +457,6 @@ class DocumentController extends Controller
             $travel
             ->pegawai
             ->signatureAbsolutePath();
-
-
-        abort_if(
-            ! $signaturePath,
-            422,
-            'Tanda tangan pegawai belum tersedia. Silakan hubungi Admin.'
-        );
 
 
         return [
