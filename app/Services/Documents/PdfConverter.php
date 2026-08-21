@@ -90,8 +90,14 @@ class PdfConverter
     {
         $processTemp = storage_path('app/private/process-temp');
         $this->ensureDirectory($processTemp);
+        $phpCliBinary = trim((string) config('sim_pd.documents.php_cli_binary', 'php'));
+
+        if ($phpCliBinary === '') {
+            throw new RuntimeException('Binary PHP CLI belum dikonfigurasi.');
+        }
+
         $process = new Process([
-            PHP_BINARY,
+            $phpCliBinary,
             base_path('artisan'),
             'sim-pd:convert-document',
             $inputPath,

@@ -54,8 +54,18 @@ Tampilan memakai route Laravel modern seperti `/admin`, `/officer`, `/pegawai`, 
 Atur LibreOffice di `.env`:
 
 ```dotenv
-LIBREOFFICE_BINARY="C:\Program Files\LibreOffice\program\soffice.exe"
+PHP_CLI_BINARY=php
+LIBREOFFICE_BINARY="C:/Program Files/LibreOffice/program/soffice.exe"
 LIBREOFFICE_TIMEOUT=60
+```
+
+Pada Linux/VPS, gunakan path binary aktual agar proses web PHP-FPM selalu
+menjalankan PHP CLI dan LibreOffice yang benar:
+
+```dotenv
+PHP_CLI_BINARY=/usr/bin/php8.5
+LIBREOFFICE_BINARY=/usr/bin/libreoffice
+LIBREOFFICE_TIMEOUT=120
 ```
 
 Template berada di `resources/documents`. File sementara dan hasil PDF berada di `storage/app/private/documents` dan dibersihkan setelah respons dikirim. Menu admin **Kesehatan Sistem** memeriksa database, storage privat, template, dan binary LibreOffice tanpa menampilkan path internal.

@@ -9,6 +9,7 @@ return [
         ],
         'temporary_dir' => storage_path('app/private/documents/temporary'),
         'pdf_dir' => storage_path('app/private/documents/pdf'),
+        'php_cli_binary' => env('PHP_CLI_BINARY', 'php'),
         'tingkat_perjadin' => env('SIMPD_TRAVEL_LEVEL', 'C'),
         'libreoffice' => [
             'binary' => env('LIBREOFFICE_BINARY', 'C:\\Program Files\\LibreOffice\\program\\soffice.exe'),
