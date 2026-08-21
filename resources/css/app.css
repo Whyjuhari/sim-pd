@@ -1,0 +1,76 @@
+@import "bootstrap/dist/css/bootstrap.min.css";
+@import "bootstrap-icons/font/bootstrap-icons.css";
+
+:root {
+    --sim-primary: #224369;
+    --sim-primary-dark: #172f4b;
+    --sim-bg: #f4f6f9;
+}
+
+body {
+    background: var(--sim-bg);
+    color: #1f2937;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.bg-identity { background-color: var(--sim-primary) !important; }
+.text-identity { color: var(--sim-primary) !important; }
+.btn-identity { background: var(--sim-primary); border-color: var(--sim-primary); color: #fff; }
+.btn-identity:hover { background: var(--sim-primary-dark); border-color: var(--sim-primary-dark); color: #fff; }
+.app-navbar { min-height: 64px; }
+.app-logo { width: 38px; height: 38px; object-fit: contain; }
+.app-sidebar {
+    min-height: calc(100vh - 64px);
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+    padding: 1.25rem .85rem;
+}
+.app-sidebar .nav-link {
+    color: #475569;
+    border-radius: .6rem;
+    padding: .7rem .85rem;
+    margin-bottom: .25rem;
+    font-weight: 500;
+}
+.app-sidebar .nav-link:hover,
+.app-sidebar .nav-link.active {
+    color: var(--sim-primary);
+    background: #eaf1f8;
+}
+.app-main { min-width: 0; }
+.card { border: 0; }
+.avatar-sm { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.breadcrumb { --bs-breadcrumb-divider: "›"; font-size: .85rem; }
+.table > :not(caption) > * > * { padding: .75rem; }
+.status-siap_jalan { background: #cff4fc; color: #055160; }
+.status-pending_verif { background: #fff3cd; color: #664d03; }
+.status-approved { background: #198754; color: #fff; }
+.status-rejected { background: #dc3545; color: #fff; }
+.status-draft_spt { background: #6c757d; color: #fff; }
+.workflow-steps { display: flex; gap: .35rem; overflow-x: auto; }
+.workflow-steps span {
+    flex: 1 0 auto;
+    text-align: center;
+    padding: .55rem .75rem;
+    border-radius: 999px;
+    background: #e9ecef;
+    color: #6c757d;
+    font-size: .8rem;
+    font-weight: 600;
+}
+.workflow-steps span.done { background: #d1e7dd; color: #0f5132; }
+.workflow-steps span.active { background: var(--sim-primary); color: #fff; }
+
+@media (max-width: 767.98px) {
+    .app-brand-text { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .table-actions-sticky { min-width: 760px; }
+    .table-actions-sticky th:last-child,
+    .table-actions-sticky td:last-child {
+        position: sticky;
+        right: 0;
+        background: #fff;
+        box-shadow: -5px 0 8px rgba(15, 23, 42, .06);
+        z-index: 1;
+    }
+    .table-actions-sticky thead th:last-child { background: #f8f9fa; z-index: 2; }
+}

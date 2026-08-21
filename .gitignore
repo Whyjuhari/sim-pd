@@ -1,0 +1,51 @@
+*.log
+.DS_Store
+
+# Environment files may contain credentials. Only the safe example is tracked.
+.env
+.env.*
+!.env.example
+
+.phpactor.json
+.phpunit.result.cache
+/.fleet
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+/tmp
+
+# User uploads stay outside Git; retain directory placeholders only.
+/public/uploads/**
+!/public/uploads/**/
+!/public/uploads/**/.gitkeep
+
+# Only the three official document templates are versioned. Generated/sample
+# documents must be written to storage and transferred separately when needed.
+/resources/documents/*
+!/resources/documents/SPD_157_Template.xlsx
+!/resources/documents/Template_SPT_Perjadin_COLLECTIVE_V5.docx
+!/resources/documents/Template_Laporan_Perjadin.docx
+
+# Database dumps and private key material are deployment data, not source code.
+*.sql
+*.sql.gz
+*.sqlite
+*.sqlite3
+*.dump
+*.pem
+*.p12
+*.pfx
+
+Homestead.json
+Homestead.yaml
+Thumbs.db
