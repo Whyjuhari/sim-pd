@@ -8,7 +8,9 @@ use App\Models\PerjalananDinas;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -48,6 +50,7 @@ class StabilizationFlowTest extends TestCase
 
     public function test_rate_snapshots_and_hotel_limit_per_day_are_used_during_verification(): void
     {
+        Storage::fake('local');
         $officer = User::factory()->role(User::ROLE_OFFICER)->create();
         $employee = User::factory()->create();
         $verifier = User::factory()->role(User::ROLE_VERIFIER)->create();
@@ -72,19 +75,17 @@ class StabilizationFlowTest extends TestCase
         Setting::query()->where('nama_setting', 'pagu_tiket')->update(['nilai_setting' => 200000]);
 
         $this->createReport($travel);
-        $this->actingAs($employee)->post(route('realizations.store'), [
-            'id' => $travel->id,
-            'biaya_hotel' => 1400000,
-            'biaya_tiket' => 1900000,
-        ])->assertRedirect(route('dashboard.user'));
+        $this->actingAs($employee)->post(route('realizations.store'), $this->realizationPayload(
+            $travel,
+            1400000,
+            1900000,
+            [UploadedFile::fake()->image('hotel.jpg', 800, 800)],
+            [UploadedFile::fake()->image('tiket.jpg', 800, 800)]
+        ))->assertRedirect(route('dashboard.user'));
 
-        $this->actingAs($verifier)->post(route('verifications.store'), [
-            'id' => $travel->id,
-            'action' => 'approve',
-            'hotel_approved' => 1400000,
-            'tiket_approved' => 1900000,
-            'catatan' => 'Sesuai bukti.',
-        ])->assertRedirect(route('dashboard.verifier'));
+        $this->actingAs($verifier)->post(route('verifications.store'),
+            $this->approvalPayload($travel, 'Sesuai bukti.')
+        )->assertRedirect(route('dashboard.verifier'));
 
         $travel->refresh();
         $this->assertSame(PerjalananDinas::STATUS_APPROVED, $travel->status);
@@ -95,6 +96,7 @@ class StabilizationFlowTest extends TestCase
 
     public function test_rejected_realization_can_be_revised_without_unlocking_the_report(): void
     {
+        Storage::fake('local');
         $employee = User::factory()->create();
         $verifier = User::factory()->role(User::ROLE_VERIFIER)->create();
         $travel = $this->pendingTravel($employee);
@@ -125,30 +127,24 @@ class StabilizationFlowTest extends TestCase
             ->assertOk()
             ->assertSeeText('Nilai tiket tidak sesuai bukti.');
 
-        $this->post(route('realizations.store'), [
-            'id' => $travel->id,
-            'biaya_hotel' => 600000,
-            'biaya_tiket' => 1200000,
-        ])->assertRedirect(route('dashboard.user'));
+        $this->post(route('realizations.store'), $this->realizationPayload(
+            $travel,
+            600000,
+            1200000,
+            [UploadedFile::fake()->image('hotel-revisi.jpg', 800, 800)],
+            [UploadedFile::fake()->image('tiket-revisi.jpg', 800, 800)]
+        ))->assertRedirect(route('dashboard.user'));
 
-        $this->actingAs($verifier)->post(route('verifications.store'), [
-            'id' => $travel->id,
-            'action' => 'approve',
-            'hotel_approved' => 600000,
-            'tiket_approved' => 1200000,
-            'catatan' => 'Perbaikan diterima.',
-        ])->assertRedirect(route('dashboard.verifier'));
+        $this->actingAs($verifier)->post(route('verifications.store'),
+            $this->approvalPayload($travel, 'Perbaikan diterima.')
+        )->assertRedirect(route('dashboard.verifier'));
 
         $travel->refresh();
         $this->assertSame(PerjalananDinas::STATUS_APPROVED, $travel->status);
         $this->assertDatabaseCount('perjalanan_dinas_status_histories', 3);
 
-        $this->post(route('verifications.store'), [
-            'id' => $travel->id,
-            'action' => 'approve',
-            'hotel_approved' => 600000,
-            'tiket_approved' => 1200000,
-        ])->assertNotFound();
+        $this->post(route('verifications.store'), $this->approvalPayload($travel))
+            ->assertNotFound();
         $this->assertDatabaseCount('perjalanan_dinas_status_histories', 3);
     }
 

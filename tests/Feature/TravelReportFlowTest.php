@@ -125,7 +125,7 @@ class TravelReportFlowTest extends TestCase
         $this->actingAs($owner)
             ->get(route('dashboard.user'))
             ->assertOk()
-            ->assertSeeText('Laporan Tersimpan / Realisasi Belum Dikirim')
+            ->assertSeeText('Realisasi Belum Dikirim')
             ->assertSeeText('Lanjutkan Realisasi')
             ->assertSee($realizationUrl, false)
             ->assertDontSee($reportUrl, false);

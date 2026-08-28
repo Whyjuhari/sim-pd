@@ -2,6 +2,7 @@
 
 @section('title', 'Edit SPT - SIM-PD')
 @section('brand', 'Edit Surat Tugas')
+@section('page-subtitle', 'Perbarui data kolektif selama seluruh anggota masih berstatus Siap Berjalan.')
 
 @section('content')
 
@@ -109,7 +110,7 @@
 
                         <div class="row">
 
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
 
                                 <label class="form-label fw-bold">
                                     Nomor Memo Internal
@@ -122,7 +123,28 @@
                             </div>
 
 
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
+
+                                <label for="daily_allowance_category" class="fw-bold">
+                                    Kategori Uang Harian
+                                </label>
+
+                                <select id="daily_allowance_category" name="daily_allowance_category" class="form-select">
+                                    @foreach($dailyAllowanceCategories as $value => $label)
+                                        <option value="{{ $value }}" @selected(old('daily_allowance_category', $travel->daily_allowance_category ?? 'outside_city') === $value)>
+                                            {{ $label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">SPT lama tetap menggunakan sumber tarif sebelumnya.</div>
+                                @error('daily_allowance_category')
+                                    <div class="text-danger small">{{ $message }}</div>
+                                @enderror
+
+                            </div>
+
+
+                            <div class="col-md-4 mb-3">
 
                                 <label class="form-label fw-bold">
                                     Tanggal Memo Internal
@@ -247,19 +269,20 @@
                                     Kota Tujuan
                                 </label>
 
-                                <select name="kota_tujuan" class="form-select" required>
+                                <select id="destinationSelect" name="kota_tujuan" class="form-select" required>
 
                                     <option value="">
                                         -- Pilih Kota --
                                     </option>
 
                                     @foreach ($destinations as $destination)
-                                        <option value="{{ $destination->kota_tujuan }}" @selected(old('kota_tujuan', $travel->kota_tujuan) === $destination->kota_tujuan)>
+                                        <option value="{{ $destination->kota_tujuan }}" data-air-available="{{ $destination->airfare_city ? '1' : '0' }}" data-ground-available="{{ $destination->ground_transport_source === 'pmk' ? '1' : '0' }}" @selected(old('kota_tujuan', $travel->kota_tujuan) === $destination->kota_tujuan)>
                                             {{ $destination->kota_tujuan }}
                                         </option>
                                     @endforeach
 
                                 </select>
+                                <div id="transportRecommendation" class="form-text" aria-live="polite"></div>
 
                             </div>
 
@@ -328,7 +351,7 @@
                                     Jenis Angkutan
                                 </label>
 
-                                <select name="angkutan" class="form-select" required>
+                                <select id="transportSelect" name="angkutan" class="form-select" required>
 
                                     <option value="Pesawat Udara" @selected(old('angkutan', $travel->angkutan) === 'Pesawat Udara')>
                                         Pesawat Udara
@@ -339,6 +362,7 @@
                                     </option>
 
                                 </select>
+                                <div class="form-text">Officer tetap mengonfirmasi moda yang digunakan.</div>
 
                             </div>
 
@@ -365,7 +389,7 @@
                         <hr>
 
 
-                        <div class="d-flex justify-content-between">
+                        <div class="form-action-bar">
 
                             <a href="{{ route('travel-orders.show', [
                                 'sptGroupId' => $travel->spt_group_id,
@@ -529,8 +553,9 @@
 
             if (diff < 0) {
 
-                alert(
-                    'Tanggal kembali tidak boleh sebelum tanggal berangkat.'
+                window.SimPdDialog.warning(
+                    'Tanggal kembali tidak boleh sebelum tanggal berangkat.',
+                    'Tanggal perjalanan tidak valid'
                 );
 
                 document.getElementById(
@@ -564,5 +589,24 @@
 
         refreshRemoveButtons();
         calculateDays();
+
+        const destinationSelect = document.getElementById('destinationSelect');
+        const transportSelect = document.getElementById('transportSelect');
+        const transportRecommendation = document.getElementById('transportRecommendation');
+        function updateTransportRecommendation(changeMode = false) {
+            const option = destinationSelect.selectedOptions[0];
+            if (!option?.value) { transportRecommendation.textContent = ''; return; }
+            const air = option.dataset.airAvailable === '1';
+            const ground = option.dataset.groundAvailable === '1';
+            if (changeMode && air && !ground) transportSelect.value = 'Pesawat Udara';
+            if (changeMode && ground && !air) transportSelect.value = 'Transportasi Darat';
+            transportRecommendation.textContent = air && ground
+                ? 'Tarif PMK tersedia untuk pesawat dan darat; pilih sesuai penugasan.'
+                : air ? 'Rekomendasi sistem: Pesawat Udara.'
+                : ground ? 'Rekomendasi sistem: Transportasi Darat.'
+                : 'Belum ada rute transport PMK lengkap; sistem akan memberi label fallback.';
+        }
+        destinationSelect.addEventListener('change', () => updateTransportRecommendation(true));
+        updateTransportRecommendation(false);
     </script>
 @endpush

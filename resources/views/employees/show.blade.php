@@ -1,13 +1,13 @@
 @extends('layouts.app')
 @section('title', 'Profil ' . $employee->nama_lengkap)
 @section('brand', 'Detail Pegawai')
+@section('page-subtitle', 'Lihat profil, kelengkapan dokumen, dan riwayat perjalanan pegawai.')
+@section('page-actions')
+    <a href="{{ route('employees.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Daftar Pegawai</a>
+    <a href="{{ route('employees.edit', ['id' => $employee->id]) }}" class="btn btn-primary"><i class="bi bi-pencil-square"></i> Edit Data</a>
+@endsection
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <a href="{{ route('employees.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Daftar Pegawai</a>
-        <a href="{{ route('employees.edit', ['id' => $employee->id]) }}" class="btn btn-warning"><i class="bi bi-pencil"></i> Edit Data</a>
-    </div>
-
     <div class="card shadow-sm mb-4">
         <div class="card-body p-4">
             <div class="row align-items-center g-4">

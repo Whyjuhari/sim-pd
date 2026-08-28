@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\PerjalananDinas;
+use App\Models\PerjalananDinasStatusHistory;
 use App\Models\User;
+use App\Services\Reports\TravelRecapService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -126,48 +127,63 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function program(Request $request): View
+    public function program(Request $request, TravelRecapService $recap): View
     {
-        $filters = $request->validate([
-            'from' => ['nullable', 'date'],
-            'to' => ['nullable', 'date', 'after_or_equal:from'],
-            'status' => ['nullable', Rule::in([
-                PerjalananDinas::STATUS_READY,
-                PerjalananDinas::STATUS_PENDING,
-                PerjalananDinas::STATUS_APPROVED,
-                PerjalananDinas::STATUS_REJECTED,
-            ])],
-            'destination' => ['nullable', 'string', 'max:50'],
-        ]);
-        $query = PerjalananDinas::query()
-            ->with('pegawai')
-            ->when($filters['from'] ?? null, fn ($query, $from) => $query->whereDate('tgl_berangkat', '>=', $from))
-            ->when($filters['to'] ?? null, fn ($query, $to) => $query->whereDate('tgl_berangkat', '<=', $to))
-            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when($filters['destination'] ?? null, fn ($query, $destination) => $query->where('kota_tujuan', $destination));
+        $filters = $recap->normalizeProgramFilters($request->validate($recap->programFilterRules()));
+        $query = $recap->programQuery($filters);
+        $summary = $recap->summary($query);
 
         return view('dashboards.program', [
-            'travels' => (clone $query)->latest('id')->paginate(15)->withQueryString(),
+            'travels' => (clone $query)->with('pegawai')->latest('id')->paginate(15)->withQueryString(),
             'stats' => [
-                'count' => (clone $query)->count(),
-                'estimate' => (float) (clone $query)->sum('estimasi_biaya'),
-                'realized' => (float) (clone $query)->where('status', PerjalananDinas::STATUS_APPROVED)->sum('total_cair'),
+                'count' => $summary['count'],
+                'estimate' => $summary['estimate'],
+                'realized' => $summary['realized'],
             ],
+            'recaps' => $recap->grouped($query),
             'filters' => $filters,
             'destinations' => PerjalananDinas::query()->distinct()->orderBy('kota_tujuan')->pluck('kota_tujuan'),
+            'accounts' => PerjalananDinas::query()->whereNotNull('akun_anggaran')
+                ->distinct()->orderBy('akun_anggaran')->pluck('akun_anggaran'),
         ]);
     }
 
     public function user(Request $request): View
     {
         $base = PerjalananDinas::query()->where('user_id', $request->user()->id);
+        $filters = $request->validate([
+            'status' => ['nullable', Rule::in([
+                PerjalananDinas::STATUS_DRAFT,
+                PerjalananDinas::STATUS_READY,
+                PerjalananDinas::STATUS_PENDING,
+                PerjalananDinas::STATUS_APPROVED,
+                PerjalananDinas::STATUS_REJECTED,
+            ])],
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
+            'destination' => ['nullable', 'string', 'max:100'],
+            'spt' => ['nullable', 'string', 'max:100'],
+        ]);
+        $destination = trim((string) ($filters['destination'] ?? ''));
+        $spt = trim((string) ($filters['spt'] ?? ''));
+        $query = (clone $base)
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['year'] ?? null, fn ($query, $year) => $query->whereYear('tgl_berangkat', $year))
+            ->when($destination !== '', fn ($query) => $query->where('kota_tujuan', $destination))
+            ->when($spt !== '', fn ($query) => $query->where('no_spt', 'like', "%{$spt}%"));
 
         return view('dashboards.user', [
-            'travels' => (clone $base)->with('laporan')->latest('id')->paginate(10),
+            'travels' => $query->with('laporan')->latest('id')->paginate(10)->withQueryString(),
             'newTaskCount' => (clone $base)
                 ->whereIn('status', [PerjalananDinas::STATUS_READY, PerjalananDinas::STATUS_REJECTED])
                 ->count(),
             'hasSignature' => $request->user()->hasSignature(),
+            'filters' => [...$filters, 'destination' => $destination, 'spt' => $spt],
+            'destinationOptions' => (clone $base)->whereNotNull('kota_tujuan')
+                ->distinct()->orderBy('kota_tujuan')->pluck('kota_tujuan'),
+            'yearOptions' => (clone $base)->whereNotNull('tgl_berangkat')
+                ->pluck('tgl_berangkat')
+                ->map(fn ($date) => (int) substr((string) $date, 0, 4))
+                ->filter()->unique()->sortDesc()->values(),
         ]);
     }
 
@@ -180,38 +196,48 @@ class DashboardController extends Controller
                 ->orWhereHas('pegawai', fn ($query) => $query->where('nama_lengkap', 'like', "%{$search}%"));
         }));
 
+        $decisionSearch = fn ($query) => $query->when($search !== '', fn ($query) => $query->whereHas(
+            'perjalananDinas',
+            fn ($query) => $filter($query)
+        ));
+        $decisionQuery = $decisionSearch(
+            PerjalananDinasStatusHistory::query()
+                ->with(['perjalananDinas.pegawai', 'actor'])
+                ->whereIn('to_status', [
+                    PerjalananDinas::STATUS_APPROVED,
+                    PerjalananDinas::STATUS_REJECTED,
+                ])
+        );
+
         return view('dashboards.verifier', [
             'search' => $search,
             'pendingTravels' => $filter(
                 PerjalananDinas::query()->with('pegawai')->where('status', PerjalananDinas::STATUS_PENDING)
             )->latest('id')->paginate(10, ['*'], 'pending_page')->withQueryString(),
-            'approvedTravels' => $filter(
-                PerjalananDinas::query()->with('pegawai')->where('status', PerjalananDinas::STATUS_APPROVED)
-            )->latest('id')->paginate(10, ['*'], 'history_page')->withQueryString(),
+            'recentDecisions' => (clone $decisionQuery)->latest('created_at')->limit(5)->get(),
+            'decisionCount' => (clone $decisionQuery)->count(),
         ]);
     }
 
-    public function head(Request $request): View
+    public function head(Request $request, TravelRecapService $recap): View
     {
         $year = min(2100, max(2000, (int) $request->query('year', now()->year)));
-        $query = PerjalananDinas::query()->whereYear('tgl_berangkat', $year);
+        $query = $recap->headQuery($year);
+        $summary = $recap->summary($query);
+        $recaps = $recap->grouped($query, $year);
 
         return view('dashboards.head', [
             'year' => $year,
             'stats' => [
-                'total' => (clone $query)->count(),
+                'total' => $summary['count'],
                 'ready' => (clone $query)->where('status', PerjalananDinas::STATUS_READY)->count(),
                 'pending' => (clone $query)->where('status', PerjalananDinas::STATUS_PENDING)->count(),
                 'approved' => (clone $query)->where('status', PerjalananDinas::STATUS_APPROVED)->count(),
-                'estimate' => (float) (clone $query)->sum('estimasi_biaya'),
-                'realized' => (float) (clone $query)->where('status', PerjalananDinas::STATUS_APPROVED)->sum('total_cair'),
+                'estimate' => $summary['estimate'],
+                'realized' => $summary['realized'],
             ],
-            'destinations' => (clone $query)
-                ->select('kota_tujuan', DB::raw('COUNT(*) as total'))
-                ->groupBy('kota_tujuan')
-                ->orderByDesc('total')
-                ->limit(5)
-                ->get(),
+            'destinations' => $recaps['destinations']->take(5),
+            'recaps' => $recaps,
             'travels' => (clone $query)->with('pegawai')->latest('id')->paginate(10)->withQueryString(),
         ]);
     }

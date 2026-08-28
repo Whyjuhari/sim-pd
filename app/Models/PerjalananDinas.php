@@ -53,10 +53,61 @@ class PerjalananDinas extends Model
             'biaya_tiket_approved' => 'decimal:2',
             'uang_harian_per_hari_snapshot' => 'decimal:2',
             'batas_hotel_per_hari_snapshot' => 'decimal:2',
+            'hotel_nights_snapshot' => 'integer',
             'batas_transport_snapshot' => 'decimal:2',
+            'ground_transport_one_way_snapshot' => 'decimal:2',
+            'terminal_origin_one_way_snapshot' => 'decimal:2',
+            'terminal_destination_one_way_snapshot' => 'decimal:2',
+            'airfare_business_pp_snapshot' => 'decimal:2',
+            'airfare_economy_pp_snapshot' => 'decimal:2',
             'total_cair' => 'decimal:2',
             'verified_at' => 'datetime',
         ];
+    }
+
+    public function dailyAllowanceRegulation(): BelongsTo
+    {
+        return $this->belongsTo(DailyAllowanceRegulation::class, 'daily_allowance_regulation_id');
+    }
+
+    public function dailyAllowanceProvince(): BelongsTo
+    {
+        return $this->belongsTo(Province::class, 'daily_allowance_province_id');
+    }
+
+    public function hotelRegulation(): BelongsTo
+    {
+        return $this->belongsTo(HotelRegulation::class, 'hotel_regulation_id');
+    }
+
+    public function hotelProvince(): BelongsTo
+    {
+        return $this->belongsTo(Province::class, 'hotel_province_id');
+    }
+
+    public function groundTransportRegulation(): BelongsTo
+    {
+        return $this->belongsTo(GroundTransportRegulation::class, 'ground_transport_regulation_id');
+    }
+
+    public function groundTransportProvince(): BelongsTo
+    {
+        return $this->belongsTo(Province::class, 'ground_transport_province_id');
+    }
+
+    public function airTransportRegulation(): BelongsTo
+    {
+        return $this->belongsTo(AirTransportRegulation::class, 'air_transport_regulation_id');
+    }
+
+    public function airOriginProvince(): BelongsTo
+    {
+        return $this->belongsTo(Province::class, 'air_origin_province_id');
+    }
+
+    public function airDestinationProvince(): BelongsTo
+    {
+        return $this->belongsTo(Province::class, 'air_destination_province_id');
     }
 
     public function pegawai(): BelongsTo
@@ -76,6 +127,24 @@ class PerjalananDinas extends Model
     {
         return $this->hasMany(PerjalananDinasStatusHistory::class, 'perjalanan_dinas_id')
             ->latest('created_at');
+    }
+
+    public function buktiRealisasi(): HasMany
+    {
+        return $this->hasMany(BuktiRealisasi::class, 'perjalanan_dinas_id')
+            ->orderBy('jenis')
+            ->orderBy('urutan');
+    }
+
+    public function rincianRealisasi(): HasMany
+    {
+        return $this->hasMany(RealisasiRincian::class, 'perjalanan_dinas_id')
+            ->orderBy('urutan');
+    }
+
+    public function verifier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
     }
     public function sptGroupingKey(): string
     {

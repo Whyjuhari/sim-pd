@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MasterTarif extends Model
 {
@@ -18,5 +19,10 @@ class MasterTarif extends Model
             'uang_saku_per_hari' => 'decimal:2',
             'updated_at' => 'datetime',
         ];
+    }
+
+    public function province(): BelongsTo
+    {
+        return $this->belongsTo(Province::class);
     }
 }

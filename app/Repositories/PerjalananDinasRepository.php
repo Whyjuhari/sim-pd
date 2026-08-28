@@ -4,12 +4,13 @@ namespace App\Repositories;
 
 use App\Models\MasterTarif;
 use App\Models\PerjalananDinas;
+use App\Models\RealisasiRincian;
 
 class PerjalananDinasRepository
 {
     public function findForDocument(int $id): ?array
     {
-        $travel = PerjalananDinas::query()->with('pegawai')->find($id);
+        $travel = PerjalananDinas::query()->with(['pegawai', 'rincianRealisasi'])->find($id);
 
         if (! $travel || ! $travel->pegawai) {
             return null;
@@ -21,12 +22,25 @@ class PerjalananDinasRepository
                 ->value('uang_saku_per_hari')
             ?? 0);
         $dailyTotal = $dailyRate * $travel->lama_hari;
-        $hotelApproved = (float) $travel->biaya_hotel_approved;
-        $ticketApproved = (float) ($travel->biaya_tiket_approved ?? $travel->biaya_tiket_real);
+        $approvedDetails = $travel->rincianRealisasi
+            ->filter(fn (RealisasiRincian $detail): bool => $detail->nilai_disetujui !== null);
+        $hasDetails = $approvedDetails->isNotEmpty();
+        $hotelApproved = $hasDetails
+            ? (float) $approvedDetails->where('kategori', RealisasiRincian::CATEGORY_HOTEL)->sum('nilai_disetujui')
+            : (float) $travel->biaya_hotel_approved;
+        $ticketApproved = $hasDetails
+            ? (float) $approvedDetails->where('kode', RealisasiRincian::CODE_FLIGHT_TICKET)->sum('nilai_disetujui')
+            : (float) ($travel->biaya_tiket_approved ?? $travel->biaya_tiket_real);
+        $localTransportApproved = $hasDetails
+            ? (float) $approvedDetails
+                ->where('kategori', RealisasiRincian::CATEGORY_TRANSPORT)
+                ->reject(fn (RealisasiRincian $detail): bool => $detail->kode === RealisasiRincian::CODE_FLIGHT_TICKET)
+                ->sum('nilai_disetujui')
+            : 0.0;
         $total = (float) $travel->total_cair;
 
         if ($total <= 0) {
-            $total = $dailyTotal + $hotelApproved + $ticketApproved;
+            $total = $dailyTotal + $hotelApproved + $ticketApproved + $localTransportApproved;
         }
 
         return [
@@ -39,7 +53,7 @@ class PerjalananDinasRepository
             'total_uang_harian' => $dailyTotal,
             'biaya_hotel_dokumen' => $hotelApproved,
             'biaya_tiket_dokumen' => $ticketApproved,
-            'transport_bandara_dokumen' => 0.0,
+            'transport_bandara_dokumen' => $localTransportApproved,
             'total_lumpsum' => $total,
         ];
     }

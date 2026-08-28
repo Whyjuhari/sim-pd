@@ -7,6 +7,8 @@ use App\Models\PerjalananDinas;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class TravelWorkflowTest extends TestCase
@@ -15,6 +17,7 @@ class TravelWorkflowTest extends TestCase
 
     public function test_complete_existing_business_flow_is_preserved(): void
     {
+        Storage::fake('local');
         $officer = User::factory()->role(User::ROLE_OFFICER)->create();
         $employeeA = User::factory()->create();
         $employeeB = User::factory()->create();
@@ -52,8 +55,20 @@ class TravelWorkflowTest extends TestCase
         $officerDashboard->assertOk()
             ->assertSeeText('pegawai dalam satu Surat Tugas')
             ->assertSeeText($employeeA->nama_lengkap)
-            ->assertSeeText($employeeB->nama_lengkap);
+            ->assertSeeText($employeeB->nama_lengkap)
+            ->assertSee('data-document-preview-trigger', false)
+            ->assertSee('data-document-preview', false)
+            ->assertSee('aria-expanded="false"', false)
+            ->assertSeeText('Menyiapkan dokumen...')
+            ->assertSeeText('Buka layar penuh')
+            ->assertSeeText('Unduh PDF');
         $this->assertSame(1, substr_count($officerDashboard->getContent(), '/documents/surat-tugas?id='));
+
+        $previewScript = file_get_contents(resource_path('js/document-preview.js'));
+        $this->assertStringContainsString("credentials: 'same-origin'", $previewScript);
+        $this->assertStringContainsString("Accept: 'application/pdf'", $previewScript);
+        $this->assertStringContainsString('URL.createObjectURL(blob)', $previewScript);
+        $this->assertStringContainsString('URL.revokeObjectURL(activeObjectUrl)', $previewScript);
 
         $travel = PerjalananDinas::query()->where('user_id', $employeeA->id)->firstOrFail();
         $this->assertSame(3, $travel->lama_hari);
@@ -66,27 +81,25 @@ class TravelWorkflowTest extends TestCase
             'tanggal_laporan' => '2026-08-12',
         ]);
 
-        $this->actingAs($employeeA)->post(route('realizations.store'), [
-            'id' => $travel->id,
-            'biaya_hotel' => 700000,
-            'biaya_tiket' => 1800000,
-        ])->assertRedirect(route('dashboard.user'));
+        $this->actingAs($employeeA)->post(route('realizations.store'), $this->realizationPayload(
+            $travel,
+            700000,
+            1800000,
+            [UploadedFile::fake()->image('hotel.jpg', 800, 800)],
+            [UploadedFile::fake()->image('tiket.jpg', 800, 800)]
+        ))->assertRedirect(route('dashboard.user'));
 
         $travel->refresh();
         $this->assertSame(PerjalananDinas::STATUS_PENDING, $travel->status);
 
-        $this->actingAs($verifier)->post(route('verifications.store'), [
-            'id' => $travel->id,
-            'action' => 'approve',
-            'hotel_approved' => 500000,
-            'tiket_approved' => 1800000,
-            'catatan' => 'Sesuai pagu',
-        ])->assertRedirect(route('dashboard.verifier'));
+        $this->actingAs($verifier)->post(route('verifications.store'),
+            $this->approvalPayload($travel, 'Sesuai pagu')
+        )->assertRedirect(route('dashboard.verifier'));
 
         $travel->refresh();
         $this->assertSame(PerjalananDinas::STATUS_APPROVED, $travel->status);
-        $this->assertSame('3410000.00', $travel->total_cair);
-        $this->assertSame('500000.00', $travel->biaya_hotel_approved);
+        $this->assertSame('3610000.00', $travel->total_cair);
+        $this->assertSame('700000.00', $travel->biaya_hotel_approved);
         $this->assertSame('1800000.00', $travel->biaya_tiket_real);
         $this->assertSame('1800000.00', $travel->biaya_tiket_approved);
         $this->assertSame($verifier->id, $travel->verified_by);

@@ -37,4 +37,16 @@ return [
             'nip' => env('SIMPD_BENDAHARA_NIP', '198705222020122013'),
         ],
     ],
+    'realization_evidence' => [
+        'max_files_per_type' => 3,
+        'max_files_per_detail' => 3,
+        'max_kilobytes_per_file' => 5120,
+        'normalized_long_edge' => 2000,
+    ],
+    'air_transport' => [
+        'default_origin_location' => env('SIMPD_DEFAULT_ORIGIN_LOCATION', 'Pangkep'),
+        'default_origin_province' => env('SIMPD_DEFAULT_ORIGIN_PROVINCE', 'SULAWESI SELATAN'),
+        'default_origin_airfare_city' => env('SIMPD_DEFAULT_ORIGIN_AIRFARE_CITY', 'MAKASSAR'),
+        'ticket_class' => 'economy',
+    ],
 ];

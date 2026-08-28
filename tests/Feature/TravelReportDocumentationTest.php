@@ -237,8 +237,8 @@ class TravelReportDocumentationTest extends TestCase
         );
 
         foreach ([
-            'Hasil Pelaksanaan' => '${hasil_pelaksanaan}',
-            'Kesimpulan' => '${kesimpulan}',
+            'Kegiatan dan Hasil yang Dicapai' => '${hasil_pelaksanaan}',
+            'Simpulan dan Saran' => '${kesimpulan}',
         ] as $headingText => $placeholder) {
             $sectionHeadings = $xpath->query(
                 '//w:body/w:p[normalize-space(string(.)) = "'

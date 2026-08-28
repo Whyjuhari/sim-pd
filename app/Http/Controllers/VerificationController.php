@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\PerjalananDinas;
+use App\Models\RealisasiRincian;
+use App\Services\RealizationDetailService;
 use App\Services\TravelCostCalculator;
 use App\Services\TravelStatusTransition;
 use Illuminate\Http\RedirectResponse;
@@ -16,15 +18,27 @@ class VerificationController extends Controller
 {
     public function __construct(
         private readonly TravelCostCalculator $calculator,
-        private readonly TravelStatusTransition $transition
+        private readonly TravelStatusTransition $transition,
+        private readonly RealizationDetailService $details
     ) {}
 
     public function show(Request $request): View
     {
-        $travel = $this->pendingTravel($request)->load(['pegawai', 'laporan', 'statusHistories.actor']);
+        $travel = $this->pendingTravel($request)->load([
+            'pegawai', 'laporan', 'statusHistories.actor',
+            'rincianRealisasi.bukti', 'buktiRealisasi',
+        ]);
         $recommendation = $this->calculator->verificationRecommendation($travel->getAttributes());
+        $recommendedApprovals = $this->details->recommendedApprovals(
+            $travel->rincianRealisasi,
+            $recommendation
+        );
 
-        return view('travel.verification', compact('travel', 'recommendation'));
+        return view('travel.verification', compact(
+            'travel',
+            'recommendation',
+            'recommendedApprovals'
+        ));
     }
 
     public function store(Request $request): RedirectResponse
@@ -33,35 +47,33 @@ class VerificationController extends Controller
         $data = $request->validate([
             'id' => ['required', 'integer', 'min:1'],
             'action' => ['nullable', Rule::in(['approve', 'reject'])],
-            'hotel_approved' => [
-                Rule::requiredIf($action === 'approve'),
-                'nullable', 'numeric', 'min:0', 'max:9999999999999.99',
-            ],
-            'tiket_approved' => [
-                Rule::requiredIf($action === 'approve'),
-                'nullable', 'numeric', 'min:0', 'max:9999999999999.99',
-            ],
-            'catatan' => [
-                Rule::requiredIf($action === 'reject'),
-                'nullable', 'string', 'max:5000',
-            ],
+            'catatan' => [Rule::requiredIf($action === 'reject'), 'nullable', 'string', 'max:5000'],
         ]);
 
         DB::transaction(function () use ($request, $data, $action): void {
             $travel = PerjalananDinas::query()
+                ->with('rincianRealisasi')
                 ->whereKey((int) $data['id'])
                 ->where('status', PerjalananDinas::STATUS_PENDING)
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            $details = RealisasiRincian::query()
+                ->where('perjalanan_dinas_id', $travel->id)
+                ->orderBy('urutan')
+                ->lockForUpdate()
+                ->get();
+
             if ($action === 'reject') {
+                RealisasiRincian::query()
+                    ->where('perjalanan_dinas_id', $travel->id)
+                    ->update(['nilai_disetujui' => null]);
+                $this->details->syncAggregates($travel);
                 $this->transition->apply(
-                    $travel,
+                    $travel->fresh(),
                     PerjalananDinas::STATUS_REJECTED,
                     $request->user(),
                     [
-                        'biaya_hotel_approved' => 0,
-                        'biaya_tiket_approved' => 0,
                         'total_cair' => 0,
                         'catatan_verifikator' => $data['catatan'],
                         'verified_by' => $request->user()->id,
@@ -73,29 +85,49 @@ class VerificationController extends Controller
                 return;
             }
 
+            if ($details->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'approved' => 'Rincian realisasi belum tersedia dan tidak dapat disetujui.',
+                ]);
+            }
+
             $recommendation = $this->calculator->verificationRecommendation($travel->getAttributes());
-            $hotelApproved = (float) $data['hotel_approved'];
-            $ticketApproved = (float) $data['tiket_approved'];
+            $approvedValues = $this->details->recommendedApprovals($details, $recommendation);
+            $categoryTotals = [
+                RealisasiRincian::CATEGORY_HOTEL => 0.0,
+                RealisasiRincian::CATEGORY_TRANSPORT => 0.0,
+            ];
 
-            if ($hotelApproved > $recommendation['hotel_limit']) {
-                throw ValidationException::withMessages([
-                    'hotel_approved' => 'Nilai hotel yang disetujui melebihi batas total perjalanan.',
-                ]);
-            }
-            if ($ticketApproved > $recommendation['transport_limit']) {
-                throw ValidationException::withMessages([
-                    'tiket_approved' => 'Nilai transportasi yang disetujui melebihi batas angkutan.',
-                ]);
+            foreach ($details as $detail) {
+                $approved = (float) ($approvedValues[(int) $detail->id] ?? 0);
+                $categoryTotals[$detail->kategori] += $approved;
+                $detail->update(['nilai_disetujui' => $approved]);
             }
 
-            $total = $hotelApproved + $ticketApproved + $recommendation['daily_allowance_total'];
+            if ($categoryTotals[RealisasiRincian::CATEGORY_HOTEL] > (float) $recommendation['hotel_limit']) {
+                throw ValidationException::withMessages([
+                    'approved' => 'Total hotel yang disetujui melebihi batas perjalanan.',
+                ]);
+            }
+            if (
+                ! in_array(($recommendation['transport_rate_source'] ?? 'legacy'), ['pmk_ground', 'pmk_air'], true)
+                && $categoryTotals[RealisasiRincian::CATEGORY_TRANSPORT] > (float) $recommendation['transport_limit']
+            ) {
+                throw ValidationException::withMessages([
+                    'approved' => 'Total transportasi yang disetujui melebihi batas angkutan.',
+                ]);
+            }
+
+            $this->details->syncAggregates($travel);
+            $total = $categoryTotals[RealisasiRincian::CATEGORY_HOTEL]
+                + $categoryTotals[RealisasiRincian::CATEGORY_TRANSPORT]
+                + (float) $recommendation['daily_allowance_total'];
+
             $this->transition->apply(
-                $travel,
+                $travel->fresh(),
                 PerjalananDinas::STATUS_APPROVED,
                 $request->user(),
                 [
-                    'biaya_hotel_approved' => $hotelApproved,
-                    'biaya_tiket_approved' => $ticketApproved,
                     'total_cair' => $total,
                     'catatan_verifikator' => $data['catatan'] ?? null,
                     'verified_by' => $request->user()->id,

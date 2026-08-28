@@ -185,6 +185,13 @@ final class LumpsumXlsxGenerator
 
         // 2. Transport Bandara
         $sheet->setCellValue(
+            'B10',
+            ($data['angkutan'] ?? '') === 'Pesawat Udara'
+                ? 'Transport lokal / bandara'
+                : 'Transportasi darat / BBM'
+        );
+
+        $sheet->setCellValue(
             'J10',
             $transportBandara
         );
@@ -198,11 +205,13 @@ final class LumpsumXlsxGenerator
         // 4. Tiket
         $sheet->setCellValue(
             'B12',
-            sprintf(
-                'Tiket %s - %s PP',
-                (string) ($data['tempat_berangkat'] ?? 'Pangkep'),
-                (string) ($data['kota_tujuan'] ?? '')
-            )
+            ($data['angkutan'] ?? '') === 'Pesawat Udara'
+                ? sprintf(
+                    'Tiket %s - %s PP',
+                    (string) ($data['tempat_berangkat'] ?? 'Pangkep'),
+                    (string) ($data['kota_tujuan'] ?? '')
+                )
+                : 'Tiket pesawat'
         );
 
         $sheet->setCellValue(

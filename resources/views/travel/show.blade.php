@@ -2,26 +2,12 @@
 
 @section('title', 'Detail SPT - SIM-PD')
 @section('brand', 'Detail Surat Tugas')
+@section('page-subtitle', 'Tinjau informasi surat, tujuan, anggota, dan status perjalanan dalam SPT kolektif.')
+@section('page-actions')
+    <a href="{{ route('dashboard.officer') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
+@endsection
 
 @section('content')
-
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h4 class="mb-1">
-                Detail Surat Tugas
-            </h4>
-
-            <div class="text-muted">
-                {{ $travel->no_spt }}
-            </div>
-        </div>
-
-        <a href="{{ route('dashboard.officer') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i>
-            Kembali
-        </a>
-    </div>
-
     <div class="card shadow-sm mb-4">
 
         <div class="card-header bg-white py-3">
@@ -350,11 +336,11 @@
                     'sptGroupId' => $travel->spt_group_id,
                 ]) }}"
                 method="POST" class="d-inline"
-                onsubmit="
-                return confirm(
-                    'Yakin ingin menghapus Surat Tugas ini? Semua data pegawai yang tergabung dalam SPT ini akan dihapus.'
-                );
-            ">
+                data-sim-confirm
+                data-sim-confirm-title="Hapus SPT kolektif?"
+                data-sim-confirm-text="Semua data pegawai yang tergabung dalam SPT ini akan dihapus. Tindakan ini tidak dapat dibatalkan."
+                data-sim-confirm-button="Ya, hapus SPT"
+                data-sim-confirm-tone="danger">
 
                 @csrf
                 @method('DELETE')

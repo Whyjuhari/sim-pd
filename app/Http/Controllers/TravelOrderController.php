@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MasterTarif;
 use App\Models\BudgetAccount;
+use App\Models\DailyAllowanceRate;
 use App\Models\PerjalananDinas;
 use App\Models\User;
 use App\Services\TravelCostCalculator;
@@ -16,6 +17,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use DomainException;
 
 class TravelOrderController extends Controller
 {
@@ -45,6 +47,7 @@ class TravelOrderController extends Controller
                 ->where('is_active', true)
                 ->orderBy('code')
                 ->get(),
+            'dailyAllowanceCategories' => DailyAllowanceRate::categoryLabels(),
         ]);
     }
 
@@ -215,6 +218,9 @@ class TravelOrderController extends Controller
                     ->orWhere('code', $travels->first()->akun_anggaran)
                     ->orderBy('code')
                     ->get(),
+
+                'dailyAllowanceCategories'
+                => DailyAllowanceRate::categoryLabels(),
             ]
         );
     }
@@ -230,6 +236,8 @@ class TravelOrderController extends Controller
         Request $request,
         string $sptGroupId
     ): RedirectResponse {
+        $existingTravel = $this->groupTravels($sptGroupId)->first();
+
         $data =
             $this->validatedData(
                 $request
@@ -244,7 +252,8 @@ class TravelOrderController extends Controller
          */
         [$days, $estimate, $rates] =
             $this->calculateTrip(
-                $data
+                $data,
+                $existingTravel
             );
 
         $commonData =
@@ -638,6 +647,11 @@ class TravelOrderController extends Controller
                 ]),
             ],
 
+            'daily_allowance_category' => [
+                'nullable',
+                Rule::in(array_keys(DailyAllowanceRate::categoryLabels())),
+            ],
+
             'akun_anggaran' => [
                 'required',
                 'string',
@@ -657,7 +671,8 @@ class TravelOrderController extends Controller
      */
 
     private function calculateTrip(
-        array $data
+        array $data,
+        ?PerjalananDinas $existingTravel = null
     ): array {
         $start =
             CarbonImmutable::parse(
@@ -675,12 +690,39 @@ class TravelOrderController extends Controller
             )
             + 1;
 
-        $rates = $this->calculator->rates(
-            $data['kota_tujuan'],
-            $data['angkutan']
-        );
+        try {
+            $rates = $this->calculator->ratesForOrder(
+                $data['kota_tujuan'],
+                $data['angkutan'],
+                $data['tgl_berangkat'],
+                $data['daily_allowance_category'] ?? null,
+                $existingTravel,
+                $days,
+                $data['tempat_berangkat']
+            );
+        } catch (DomainException $exception) {
+            $message = mb_strtolower($exception->getMessage());
+            $errorField = str_contains($message, 'transport')
+                ? 'angkutan'
+                : (str_contains($message, 'hotel')
+                    ? 'kota_tujuan'
+                    : 'daily_allowance_category');
+            throw ValidationException::withMessages([
+                $errorField => $exception->getMessage(),
+            ]);
+        }
+
+        if (
+            $rates['daily_allowance_source'] === 'pmk'
+            && ($rates['daily_allowance_category'] ?? null) === DailyAllowanceRate::CATEGORY_INSIDE_CITY_OVER_8_HOURS
+            && $days !== 1
+        ) {
+            throw ValidationException::withMessages([
+                'daily_allowance_category' => 'Kategori Dalam Kota Lebih dari 8 Jam hanya berlaku untuk perjalanan satu hari.',
+            ]);
+        }
         $estimate = ($rates['daily_allowance'] * $days)
-            + ($rates['hotel_per_day'] * $days)
+            + ($rates['hotel_per_day'] * $rates['hotel_nights'])
             + $rates['transport_limit'];
 
         return [
@@ -749,11 +791,95 @@ class TravelOrderController extends Controller
             'uang_harian_per_hari_snapshot'
             => $rates['daily_allowance'],
 
+            'daily_allowance_source'
+            => $rates['daily_allowance_source'],
+
+            'daily_allowance_category'
+            => $rates['daily_allowance_category'],
+
+            'daily_allowance_regulation_id'
+            => $rates['daily_allowance_regulation_id'],
+
+            'daily_allowance_province_id'
+            => $rates['daily_allowance_province_id'],
+
             'batas_hotel_per_hari_snapshot'
             => $rates['hotel_per_day'],
 
+            'hotel_rate_source'
+            => $rates['hotel_rate_source'],
+
+            'hotel_regulation_id'
+            => $rates['hotel_regulation_id'],
+
+            'hotel_province_id'
+            => $rates['hotel_province_id'],
+
+            'hotel_rate_group'
+            => $rates['hotel_rate_group'],
+
+            'hotel_nights_snapshot'
+            => $rates['hotel_nights'],
+
             'batas_transport_snapshot'
             => $rates['transport_limit'],
+
+            'transport_rate_source'
+            => $rates['transport_rate_source'],
+
+            'ground_transport_regulation_id'
+            => $rates['ground_transport_regulation_id'],
+
+            'ground_transport_province_id'
+            => $rates['ground_transport_province_id'],
+
+            'ground_transport_origin'
+            => $rates['ground_transport_origin'],
+
+            'ground_transport_destination'
+            => $rates['ground_transport_destination'],
+
+            'ground_transport_one_way_snapshot'
+            => $rates['ground_transport_one_way'],
+
+            'air_transport_regulation_id'
+            => $rates['air_transport_regulation_id'],
+
+            'air_origin_province_id'
+            => $rates['air_origin_province_id'],
+
+            'air_destination_province_id'
+            => $rates['air_destination_province_id'],
+
+            'air_origin_city'
+            => $rates['air_origin_city'],
+
+            'air_destination_city'
+            => $rates['air_destination_city'],
+
+            'airfare_class'
+            => $rates['airfare_class'],
+
+            'terminal_origin_source'
+            => $rates['terminal_origin_source'],
+
+            'terminal_origin_one_way_snapshot'
+            => $rates['terminal_origin_one_way'],
+
+            'terminal_destination_source'
+            => $rates['terminal_destination_source'],
+
+            'terminal_destination_one_way_snapshot'
+            => $rates['terminal_destination_one_way'],
+
+            'airfare_rate_source'
+            => $rates['airfare_rate_source'],
+
+            'airfare_business_pp_snapshot'
+            => $rates['airfare_business_pp'],
+
+            'airfare_economy_pp_snapshot'
+            => $rates['airfare_economy_pp'],
         ];
     }
 

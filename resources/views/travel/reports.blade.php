@@ -2,6 +2,7 @@
 
 @section('title', 'Laporan Perjalanan Dinas - SIM-PD')
 @section('brand', 'Laporan Perjalanan Dinas')
+@section('page-subtitle', 'Lengkapi kegiatan dan hasil yang dicapai, simpulan dan saran, serta dokumentasi.')
 
 @section('content')
 
@@ -35,9 +36,9 @@
                         otomatis oleh sistem.
 
                         Silakan lengkapi
-                        <strong>Hasil Pelaksanaan Kegiatan</strong>
+                        <strong>Kegiatan dan Hasil yang Dicapai</strong>
                         dan
-                        <strong>Kesimpulan</strong>.
+                        <strong>Simpulan dan Saran</strong>.
 
                     </div>
 
@@ -170,19 +171,19 @@
                         @csrf
                         @method('PUT')
                         <h6 class="fw-bold border-bottom pb-2 mb-3">
-                            C. Hasil Pelaksanaan Kegiatan
+                            C. Kegiatan dan Hasil yang Dicapai
                         </h6>
 
 
                         <div class="mb-4">
 
                             <label for="hasil_pelaksanaan" class="form-label fw-semibold">
-                                Hasil Pelaksanaan
+                                Kegiatan dan Hasil yang Dicapai
                             </label>
 
                             <textarea id="hasil_pelaksanaan" name="hasil_pelaksanaan" rows="10" maxlength="20000"
                                 class="form-control @error('hasil_pelaksanaan') is-invalid @enderror"
-                                placeholder="Jelaskan hasil kegiatan yang telah dilaksanakan..." required>{{ old('hasil_pelaksanaan', $report?->hasil_pelaksanaan) }}</textarea>
+                                placeholder="Jelaskan kegiatan yang dilaksanakan dan hasil yang berhasil dicapai..." required>{{ old('hasil_pelaksanaan', $report?->hasil_pelaksanaan) }}</textarea>
 
 
                             <div class="form-text">
@@ -201,19 +202,19 @@
                         </div>
 
                         <h6 class="fw-bold border-bottom pb-2 mb-3">
-                            D. Kesimpulan
+                            D. Simpulan dan Saran
                         </h6>
 
 
                         <div class="mb-4">
 
                             <label for="kesimpulan" class="form-label fw-semibold">
-                                Kesimpulan
+                                Simpulan dan Saran
                             </label>
 
                             <textarea id="kesimpulan" name="kesimpulan" rows="6" maxlength="10000"
                                 class="form-control @error('kesimpulan') is-invalid @enderror"
-                                placeholder="Tuliskan kesimpulan dari perjalanan dinas..." required>{{ old('kesimpulan', $report?->kesimpulan) }}</textarea>
+                                placeholder="Tuliskan simpulan dan saran dari perjalanan dinas..." required>{{ old('kesimpulan', $report?->kesimpulan) }}</textarea>
 
 
                             @error('kesimpulan')
@@ -283,7 +284,7 @@
                         {{-- BUTTON --}}
                         {{-- ====================================== --}}
 
-                        <div class="d-flex justify-content-between mt-4">
+                        <div class="form-action-bar">
 
                             <a href="{{ route('dashboard.user') }}" class="btn btn-secondary">
                                 <i class="bi bi-arrow-left"></i>
@@ -291,7 +292,12 @@
                             </a>
 
 
-                            <button type="submit" class="btn btn-identity">
+                            <button type="submit" class="btn btn-identity"
+                                data-sim-confirm
+                                data-sim-confirm-title="Simpan laporan kegiatan?"
+                                data-sim-confirm-text="Laporan hanya dapat diisi satu kali. Setelah disimpan, Anda akan melanjutkan ke form realisasi dan isi laporan tidak dapat diubah."
+                                data-sim-confirm-button="Simpan &amp; lanjut"
+                                data-sim-confirm-tone="warning">
                                 <i class="bi bi-arrow-right-circle"></i>
                                 Simpan & Lanjut ke Realisasi
                             </button>
@@ -396,7 +402,10 @@
                 syncInputFiles();
 
                 if (exceedsLimit) {
-                    alert('Maksimal dua foto dokumentasi dapat dipilih.');
+                    window.SimPdDialog.warning(
+                        'Maksimal dua foto dokumentasi dapat dipilih.',
+                        'Batas foto dokumentasi'
+                    );
                 }
             });
 

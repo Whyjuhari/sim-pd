@@ -5,11 +5,18 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RecapExportController;
 use App\Http\Controllers\RealizationController;
+use App\Http\Controllers\RealizationEvidenceController;
 use App\Http\Controllers\TravelOrderController;
 use App\Http\Controllers\TravelReportController;
 use App\Http\Controllers\VerificationController;
+use App\Http\Controllers\VerificationHistoryController;
 use App\Http\Controllers\BudgetSettingController;
+use App\Http\Controllers\DailyAllowanceImportController;
+use App\Http\Controllers\HotelRateImportController;
+use App\Http\Controllers\GroundTransportImportController;
+use App\Http\Controllers\AirTransportImportController;
 use App\Http\Controllers\SystemHealthController;
 use Illuminate\Support\Facades\Route;
 
@@ -55,6 +62,14 @@ Route::middleware('auth')->group(function (): void {
         '/documents/surat-tugas',
         [DocumentController::class, 'suratTugas']
     )->middleware('password.changed')->name('documents.surat-tugas');
+
+    Route::get(
+        '/documents/bukti-realisasi/{evidence}',
+        [RealizationEvidenceController::class, 'show']
+    )
+        ->middleware('password.changed')
+        ->whereNumber('evidence')
+        ->name('realization-evidence.show');
 
     Route::middleware(['password.changed', 'role:admin'])
         ->prefix('admin')
@@ -183,8 +198,85 @@ Route::middleware('auth')->group(function (): void {
                 [DashboardController::class, 'program']
             )->name('dashboard.program');
 
+            Route::get('/rekap/export/{format}', [RecapExportController::class, 'program'])
+                ->whereIn('format', ['xlsx', 'pdf'])
+                ->name('program.recap.export');
+
             Route::get('/anggaran', [BudgetSettingController::class, 'edit'])
                 ->name('program.budget.edit');
+            Route::get('/anggaran/uang-harian/template', [DailyAllowanceImportController::class, 'template'])
+                ->name('program.daily-allowances.template');
+            Route::post('/anggaran/uang-harian/impor', [DailyAllowanceImportController::class, 'upload'])
+                ->middleware('throttle:10,1')
+                ->name('program.daily-allowances.imports.upload');
+            Route::get('/anggaran/uang-harian/impor/{import}', [DailyAllowanceImportController::class, 'preview'])
+                ->name('program.daily-allowances.imports.preview');
+            Route::post('/anggaran/uang-harian/impor/{import}/simpan', [DailyAllowanceImportController::class, 'commit'])
+                ->name('program.daily-allowances.imports.commit');
+            Route::delete('/anggaran/uang-harian/impor/{import}', [DailyAllowanceImportController::class, 'discard'])
+                ->name('program.daily-allowances.imports.discard');
+            Route::post('/anggaran/uang-harian/{regulation}/aktifkan', [DailyAllowanceImportController::class, 'activate'])
+                ->whereNumber('regulation')
+                ->name('program.daily-allowances.activate');
+            Route::get('/anggaran/uang-harian/{regulation}/csv', [DailyAllowanceImportController::class, 'download'])
+                ->whereNumber('regulation')
+                ->name('program.daily-allowances.download');
+            Route::get('/anggaran/penginapan/template', [HotelRateImportController::class, 'template'])
+                ->name('program.hotel-rates.template');
+            Route::post('/anggaran/penginapan/impor', [HotelRateImportController::class, 'upload'])
+                ->middleware('throttle:10,1')
+                ->name('program.hotel-rates.imports.upload');
+            Route::get('/anggaran/penginapan/impor/{import}', [HotelRateImportController::class, 'preview'])
+                ->name('program.hotel-rates.imports.preview');
+            Route::post('/anggaran/penginapan/impor/{import}/simpan', [HotelRateImportController::class, 'commit'])
+                ->name('program.hotel-rates.imports.commit');
+            Route::delete('/anggaran/penginapan/impor/{import}', [HotelRateImportController::class, 'discard'])
+                ->name('program.hotel-rates.imports.discard');
+            Route::post('/anggaran/penginapan/{regulation}/aktifkan', [HotelRateImportController::class, 'activate'])
+                ->whereNumber('regulation')
+                ->name('program.hotel-rates.activate');
+            Route::get('/anggaran/penginapan/{regulation}/csv', [HotelRateImportController::class, 'download'])
+                ->whereNumber('regulation')
+                ->name('program.hotel-rates.download');
+            Route::get('/anggaran/transportasi-darat/template', [GroundTransportImportController::class, 'template'])
+                ->name('program.ground-transport.template');
+            Route::post('/anggaran/transportasi-darat/impor', [GroundTransportImportController::class, 'upload'])
+                ->middleware('throttle:10,1')
+                ->name('program.ground-transport.imports.upload');
+            Route::get('/anggaran/transportasi-darat/impor/{import}', [GroundTransportImportController::class, 'preview'])
+                ->name('program.ground-transport.imports.preview');
+            Route::post('/anggaran/transportasi-darat/impor/{import}/simpan', [GroundTransportImportController::class, 'commit'])
+                ->name('program.ground-transport.imports.commit');
+            Route::delete('/anggaran/transportasi-darat/impor/{import}', [GroundTransportImportController::class, 'discard'])
+                ->name('program.ground-transport.imports.discard');
+            Route::post('/anggaran/transportasi-darat/{regulation}/aktifkan', [GroundTransportImportController::class, 'activate'])
+                ->whereNumber('regulation')
+                ->name('program.ground-transport.activate');
+            Route::get('/anggaran/transportasi-darat/{regulation}/csv', [GroundTransportImportController::class, 'download'])
+                ->whereNumber('regulation')
+                ->name('program.ground-transport.download');
+            Route::get('/anggaran/transportasi-udara/template-terminal', [AirTransportImportController::class, 'terminalTemplate'])
+                ->name('program.air-transport.terminal-template');
+            Route::get('/anggaran/transportasi-udara/template-tiket', [AirTransportImportController::class, 'airfareTemplate'])
+                ->name('program.air-transport.airfare-template');
+            Route::post('/anggaran/transportasi-udara/impor', [AirTransportImportController::class, 'upload'])
+                ->middleware('throttle:10,1')
+                ->name('program.air-transport.imports.upload');
+            Route::get('/anggaran/transportasi-udara/impor/{import}', [AirTransportImportController::class, 'preview'])
+                ->name('program.air-transport.imports.preview');
+            Route::post('/anggaran/transportasi-udara/impor/{import}/simpan', [AirTransportImportController::class, 'commit'])
+                ->name('program.air-transport.imports.commit');
+            Route::delete('/anggaran/transportasi-udara/impor/{import}', [AirTransportImportController::class, 'discard'])
+                ->name('program.air-transport.imports.discard');
+            Route::post('/anggaran/transportasi-udara/{regulation}/aktifkan', [AirTransportImportController::class, 'activate'])
+                ->whereNumber('regulation')
+                ->name('program.air-transport.activate');
+            Route::get('/anggaran/transportasi-udara/{regulation}/csv-terminal', [AirTransportImportController::class, 'downloadTerminal'])
+                ->whereNumber('regulation')
+                ->name('program.air-transport.download-terminal');
+            Route::get('/anggaran/transportasi-udara/{regulation}/csv-tiket', [AirTransportImportController::class, 'downloadAirfare'])
+                ->whereNumber('regulation')
+                ->name('program.air-transport.download-airfare');
             Route::put('/anggaran/batas', [BudgetSettingController::class, 'updateSettings'])
                 ->name('program.budget.settings.update');
             Route::post('/anggaran/tarif', [BudgetSettingController::class, 'storeTariff'])
@@ -210,6 +302,10 @@ Route::middleware('auth')->group(function (): void {
                 '/',
                 [DashboardController::class, 'head']
             )->name('dashboard.head');
+
+            Route::get('/rekap/export/{format}', [RecapExportController::class, 'head'])
+                ->whereIn('format', ['xlsx', 'pdf'])
+                ->name('head.recap.export');
         });
 
     Route::middleware(['password.changed', 'role:user'])
@@ -262,6 +358,9 @@ Route::middleware('auth')->group(function (): void {
                 '/verifikasi',
                 [VerificationController::class, 'store']
             )->name('verifications.store');
+
+            Route::get('/riwayat', VerificationHistoryController::class)
+                ->name('verifications.history');
         });
 
     /*

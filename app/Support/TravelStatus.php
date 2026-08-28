@@ -12,7 +12,7 @@ class TravelStatus
             PerjalananDinas::STATUS_DRAFT => 'Draft SPT',
             PerjalananDinas::STATUS_READY => 'Siap Berjalan',
             PerjalananDinas::STATUS_PENDING => 'Menunggu Verifikasi',
-            PerjalananDinas::STATUS_APPROVED => 'Selesai',
+            PerjalananDinas::STATUS_APPROVED => 'Diterima',
             PerjalananDinas::STATUS_REJECTED => 'Perlu Revisi',
             default => ucfirst((string) $status),
         };

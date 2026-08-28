@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', $employee->exists ? 'Edit Pegawai - SIM-PD' : 'Tambah Pegawai - SIM-PD')
 @section('brand', $employee->exists ? 'Edit Pengguna' : 'Tambah Pengguna')
+@section('page-subtitle', $employee->exists ? 'Perbarui identitas, role, foto, dan tanda tangan pengguna.' : 'Tambahkan akun baru dengan role dan data yang sesuai.')
 
 @section('content')
     <div class="row justify-content-center">
@@ -61,11 +62,11 @@
 
                                             <button type="submit" form="delete-signature-form"
                                                 class="btn btn-sm btn-outline-danger"
-                                                onclick="
-                            return confirm(
-                                'Yakin ingin menghapus tanda tangan pegawai ini?'
-                            );
-                        ">
+                                                data-sim-confirm
+                                                data-sim-confirm-title="Hapus tanda tangan?"
+                                                data-sim-confirm-text="Dokumen pegawai tidak dapat dicetak menggunakan tanda tangan ini sampai Admin mengunggah penggantinya."
+                                                data-sim-confirm-button="Ya, hapus tanda tangan"
+                                                data-sim-confirm-tone="danger">
                                                 <i class="bi bi-trash"></i>
                                                 Hapus Tanda Tangan
                                             </button>
@@ -132,7 +133,7 @@
                                     </option>
                                 @endforeach
                             </select></div>
-                        <div class="d-flex justify-content-between"><a href="{{ url()->previous() }}"
+                        <div class="form-action-bar"><a href="{{ url()->previous() }}"
                                 class="btn btn-secondary">Batal</a><button class="btn btn-identity">Simpan Data</button>
                         </div>
                     </form>

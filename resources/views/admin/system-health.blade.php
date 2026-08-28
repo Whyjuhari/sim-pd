@@ -1,18 +1,17 @@
 @extends('layouts.app')
 @section('title', 'Kesehatan Sistem - SIM-PD')
 @section('brand', 'Kesehatan Sistem')
+@section('page-subtitle', 'Periksa koneksi database, penyimpanan privat, template, dan layanan dokumen produksi.')
+@section('page-actions')
+    <span class="badge rounded-pill fs-6 px-3 py-2 {{ $allHealthy ? 'bg-success-subtle text-success-emphasis border border-success-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' }}">
+        <i class="bi {{ $allHealthy ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill' }}"></i>
+        {{ $allHealthy ? 'Semua siap' : 'Perlu perhatian' }}
+    </span>
+@endsection
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-        <div>
-            <h4 class="mb-1">Pemeriksaan Kesiapan Sistem</h4>
-            <p class="text-muted mb-0">Pemeriksaan aman tanpa menampilkan path atau detail internal server.</p>
-        </div>
-        <span class="badge fs-6 {{ $allHealthy ? 'bg-success' : 'bg-warning text-dark' }}">
-            {{ $allHealthy ? 'Semua siap' : 'Perlu perhatian' }}
-        </span>
-    </div>
     <div class="card shadow-sm">
+        <div class="card-header bg-white"><h2 class="section-title"><span class="section-title-icon"><i class="bi bi-shield-check"></i></span> Pemeriksaan Kesiapan Sistem</h2></div>
         <div class="list-group list-group-flush">
             @foreach($checks as $check)
                 <div class="list-group-item d-flex justify-content-between align-items-center py-3">

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PerjalananDinas;
 use App\Models\User;
 use App\Services\Uploads\ReportDocumentationImageStorage;
+use App\Services\Uploads\RealizationEvidenceStorage;
 use App\Services\Uploads\UserImageStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,8 @@ class EmployeeController extends Controller
 {
     public function __construct(
         private readonly UserImageStorage $images,
-        private readonly ReportDocumentationImageStorage $reportImages
+        private readonly ReportDocumentationImageStorage $reportImages,
+        private readonly RealizationEvidenceStorage $realizationEvidence
     ) {}
 
     public function index(Request $request): View
@@ -213,7 +215,7 @@ class EmployeeController extends Controller
     public function destroy(Request $request): RedirectResponse
     {
         $employee = User::query()
-            ->with('perjalananDinas.laporan.dokumentasi')
+            ->with(['perjalananDinas.laporan.dokumentasi', 'perjalananDinas.buktiRealisasi'])
             ->findOrFail($request->integer('id'));
 
         if ((int) $request->user()->id === (int) $employee->id) {
@@ -229,12 +231,17 @@ class EmployeeController extends Controller
             ->flatMap(fn (PerjalananDinas $travel) => $travel->laporan?->dokumentasi ?? collect())
             ->pluck('path')
             ->all();
+        $realizationEvidence = $employee->perjalananDinas
+            ->flatMap(fn (PerjalananDinas $travel) => $travel->buktiRealisasi)
+            ->pluck('path')
+            ->all();
         $wasEmployee = $employee->role === User::ROLE_USER;
         $employee->delete();
 
         $this->images->deleteSignature($signature);
         $this->images->deleteProfilePhoto($photo);
         $this->reportImages->deleteMany($documentation);
+        $this->realizationEvidence->deleteMany($realizationEvidence);
 
         return redirect()
             ->route($wasEmployee ? 'employees.index' : 'employees.roles')
