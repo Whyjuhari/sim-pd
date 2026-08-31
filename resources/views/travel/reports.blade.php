@@ -31,10 +31,6 @@
                     <div class="alert alert-info">
 
                         <i class="bi bi-info-circle"></i>
-
-                        Data pegawai dan perjalanan dinas diisi
-                        otomatis oleh sistem.
-
                         Silakan lengkapi
                         <strong>Kegiatan dan Hasil yang Dicapai</strong>
                         dan
@@ -239,9 +235,7 @@
                                 class="form-control {{ $errors->has('foto_dokumentasi') || $errors->has('foto_dokumentasi.*') ? 'is-invalid' : '' }}">
 
                             <div class="form-text">
-                                Wajib 1–2 foto. Format JPG, JPEG, atau PNG; maksimal 5 MB per foto.
-                                Foto dapat dipilih sekaligus atau ditambahkan satu per satu.
-                                Setiap foto akan dinormalisasi dan ditampilkan dalam bidang 10 × 10 cm pada laporan.
+                                Maksimal 2 foto. Format JPG, JPEG, atau PNG; maksimal 5 MB per foto.
                             </div>
 
                             <div id="foto_dokumentasi_terpilih" class="small mt-2" aria-live="polite"></div>
@@ -252,11 +246,6 @@
                                 </div>
                             @endif
                         </div>
-
-
-                        {{-- ====================================== --}}
-                        {{-- TANGGAL LAPORAN --}}
-                        {{-- ====================================== --}}
 
                         <div class="alert alert-light border">
 
@@ -273,16 +262,11 @@
                             </strong>
 
                             <div class="small text-muted mt-1">
-                                Tanggal laporan ditentukan otomatis
+                                Tanggal laporan di isi
                                 saat laporan pertama kali disimpan.
                             </div>
 
                         </div>
-
-
-                        {{-- ====================================== --}}
-                        {{-- BUTTON --}}
-                        {{-- ====================================== --}}
 
                         <div class="form-action-bar">
 
@@ -292,14 +276,12 @@
                             </a>
 
 
-                            <button type="submit" class="btn btn-identity"
-                                data-sim-confirm
+                            <button type="submit" class="btn btn-identity" data-sim-confirm
                                 data-sim-confirm-title="Simpan laporan kegiatan?"
                                 data-sim-confirm-text="Laporan hanya dapat diisi satu kali. Setelah disimpan, Anda akan melanjutkan ke form realisasi dan isi laporan tidak dapat diubah."
-                                data-sim-confirm-button="Simpan &amp; lanjut"
-                                data-sim-confirm-tone="warning">
+                                data-sim-confirm-button="Simpan &amp; lanjut" data-sim-confirm-tone="warning">
                                 <i class="bi bi-arrow-right-circle"></i>
-                                Simpan & Lanjut ke Realisasi
+                                Simpan & Lanjut
                             </button>
 
                         </div>
@@ -315,7 +297,7 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             const input = document.getElementById('foto_dokumentasi');
             const selectedList = document.getElementById('foto_dokumentasi_terpilih');
 
@@ -327,7 +309,7 @@
             const selectedFiles = [];
             const fileKey = (file) => `${file.name}:${file.size}:${file.lastModified}`;
 
-            const renderSelectedFiles = function () {
+            const renderSelectedFiles = function() {
                 selectedList.replaceChildren();
 
                 if (selectedFiles.length === 0) {
@@ -342,9 +324,10 @@
                 const list = document.createElement('div');
                 list.className = 'd-grid gap-2';
 
-                selectedFiles.forEach(function (file, index) {
+                selectedFiles.forEach(function(file, index) {
                     const item = document.createElement('div');
-                    item.className = 'd-flex align-items-center justify-content-between border rounded px-3 py-2';
+                    item.className =
+                        'd-flex align-items-center justify-content-between border rounded px-3 py-2';
 
                     const fileName = document.createElement('span');
                     fileName.className = 'text-break me-3';
@@ -354,7 +337,7 @@
                     removeButton.type = 'button';
                     removeButton.className = 'btn btn-sm btn-outline-danger flex-shrink-0';
                     removeButton.textContent = 'Hapus';
-                    removeButton.addEventListener('click', function () {
+                    removeButton.addEventListener('click', function() {
                         selectedFiles.splice(index, 1);
                         syncInputFiles();
                     });
@@ -366,10 +349,10 @@
                 selectedList.appendChild(list);
             };
 
-            const syncInputFiles = function () {
+            const syncInputFiles = function() {
                 const transfer = new DataTransfer();
 
-                selectedFiles.forEach(function (file) {
+                selectedFiles.forEach(function(file) {
                     transfer.items.add(file);
                 });
 
@@ -377,12 +360,12 @@
                 renderSelectedFiles();
             };
 
-            input.addEventListener('change', function () {
+            input.addEventListener('change', function() {
                 const incomingFiles = Array.from(input.files);
                 const existingKeys = new Set(selectedFiles.map(fileKey));
                 let exceedsLimit = false;
 
-                incomingFiles.forEach(function (file) {
+                incomingFiles.forEach(function(file) {
                     const key = fileKey(file);
 
                     if (existingKeys.has(key)) {

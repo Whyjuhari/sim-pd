@@ -276,14 +276,12 @@
                                     </option>
 
                                     @foreach ($destinations as $destination)
-                                        <option value="{{ $destination->kota_tujuan }}" data-air-available="{{ $destination->airfare_city ? '1' : '0' }}" data-ground-available="{{ $destination->ground_transport_source === 'pmk' ? '1' : '0' }}" @selected(old('kota_tujuan', $travel->kota_tujuan) === $destination->kota_tujuan)>
+                                        <option value="{{ $destination->kota_tujuan }}" @selected(old('kota_tujuan', $travel->kota_tujuan) === $destination->kota_tujuan)>
                                             {{ $destination->kota_tujuan }}
                                         </option>
                                     @endforeach
 
                                 </select>
-                                <div id="transportRecommendation" class="form-text" aria-live="polite"></div>
-
                             </div>
 
 
@@ -385,6 +383,8 @@
 
                         </div>
 
+
+                        <x-ui.spt-cost-preview :group-id="$travel->spt_group_id" />
 
                         <hr>
 
@@ -590,23 +590,5 @@
         refreshRemoveButtons();
         calculateDays();
 
-        const destinationSelect = document.getElementById('destinationSelect');
-        const transportSelect = document.getElementById('transportSelect');
-        const transportRecommendation = document.getElementById('transportRecommendation');
-        function updateTransportRecommendation(changeMode = false) {
-            const option = destinationSelect.selectedOptions[0];
-            if (!option?.value) { transportRecommendation.textContent = ''; return; }
-            const air = option.dataset.airAvailable === '1';
-            const ground = option.dataset.groundAvailable === '1';
-            if (changeMode && air && !ground) transportSelect.value = 'Pesawat Udara';
-            if (changeMode && ground && !air) transportSelect.value = 'Transportasi Darat';
-            transportRecommendation.textContent = air && ground
-                ? 'Tarif PMK tersedia untuk pesawat dan darat; pilih sesuai penugasan.'
-                : air ? 'Rekomendasi sistem: Pesawat Udara.'
-                : ground ? 'Rekomendasi sistem: Transportasi Darat.'
-                : 'Belum ada rute transport PMK lengkap; sistem akan memberi label fallback.';
-        }
-        destinationSelect.addEventListener('change', () => updateTransportRecommendation(true));
-        updateTransportRecommendation(false);
     </script>
 @endpush

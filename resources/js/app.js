@@ -4,6 +4,7 @@ import Chart from 'chart.js/auto';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 import './document-preview';
+import './spt-cost-preview';
 
 window.bootstrap = bootstrap;
 window.Chart = Chart;

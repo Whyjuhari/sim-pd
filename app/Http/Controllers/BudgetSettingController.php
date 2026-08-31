@@ -10,11 +10,11 @@ use App\Models\AirTransportRegulation;
 use App\Models\MasterTarif;
 use App\Models\PerjalananDinas;
 use App\Models\Province;
-use App\Models\Setting;
 use App\Services\DailyAllowanceCsvService;
 use App\Services\HotelRateCsvService;
 use App\Services\GroundTransportCsvService;
 use App\Services\AirTransportCsvService;
+use App\Services\PmkReadinessService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -28,7 +28,8 @@ class BudgetSettingController extends Controller
         DailyAllowanceCsvService $csvService,
         HotelRateCsvService $hotelCsvService,
         GroundTransportCsvService $groundTransportCsvService,
-        AirTransportCsvService $airTransportCsvService
+        AirTransportCsvService $airTransportCsvService,
+        PmkReadinessService $pmkReadiness
     ): View
     {
         $csvService->cleanupExpired();
@@ -36,12 +37,10 @@ class BudgetSettingController extends Controller
         $groundTransportCsvService->cleanupExpired();
         $airTransportCsvService->cleanupExpired();
         $search = trim((string) $request->query('q', ''));
+        $readinessYear = min(2100, max(2000, $request->integer('readiness_year', now()->year)));
 
         return view('program.budget', [
             'search' => $search,
-            'settings' => Setting::query()
-                ->whereIn('nama_setting', ['batas_hotel', 'pagu_tiket', 'batas_transport_darat'])
-                ->pluck('nilai_setting', 'nama_setting'),
             'tariffs' => MasterTarif::query()
                 ->with('province')
                 ->when($search !== '', fn ($query) => $query->where('kota_tujuan', 'like', "%{$search}%"))
@@ -74,6 +73,8 @@ class BudgetSettingController extends Controller
                 ->orderByDesc('revision')
                 ->get(),
             'airfareCities' => $airTransportCsvService->airfareCities(),
+            'pmkReadiness' => $pmkReadiness->summary($readinessYear),
+            'readinessYears' => $pmkReadiness->availableYears(),
             'accounts' => BudgetAccount::query()
                 ->orderByDesc('is_active')
                 ->orderBy('code')
@@ -82,36 +83,18 @@ class BudgetSettingController extends Controller
         ]);
     }
 
-    public function updateSettings(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'batas_hotel' => ['required', 'numeric', 'min:0', 'max:9999999999999.99'],
-            'pagu_tiket' => ['required', 'numeric', 'min:0', 'max:9999999999999.99'],
-            'batas_transport_darat' => ['required', 'numeric', 'min:0', 'max:9999999999999.99'],
-        ]);
-
-        foreach ($data as $name => $value) {
-            Setting::query()->updateOrCreate(
-                ['nama_setting' => $name],
-                ['nilai_setting' => $value]
-            );
-        }
-
-        return back()->with('success', 'Batas biaya berhasil diperbarui untuk SPT baru.');
-    }
-
     public function storeTariff(Request $request, AirTransportCsvService $airTransportCsvService): RedirectResponse
     {
         $data = $request->validate([
             'kota_tujuan' => ['required', 'string', 'max:50', 'unique:master_tarif,kota_tujuan'],
-            'uang_saku_per_hari' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'province_id' => ['nullable', 'integer', 'exists:provinces,id'],
             'airfare_city' => ['nullable', 'string', 'max:80'],
         ]);
         $data = $this->normalizeAirfareCity($data, $airTransportCsvService);
+        $data['uang_saku_per_hari'] = 0;
         MasterTarif::query()->create($data);
 
-        return back()->with('success', 'Tarif tujuan berhasil ditambahkan.');
+        return back()->with('success', 'Tujuan dan pemetaan PMK berhasil ditambahkan.');
     }
 
     public function updateTariff(Request $request, MasterTarif $tariff, AirTransportCsvService $airTransportCsvService): RedirectResponse
@@ -121,26 +104,25 @@ class BudgetSettingController extends Controller
                 'required', 'string', 'max:50',
                 Rule::unique('master_tarif', 'kota_tujuan')->ignore($tariff->id),
             ],
-            'uang_saku_per_hari' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'province_id' => ['nullable', 'integer', 'exists:provinces,id'],
             'airfare_city' => ['nullable', 'string', 'max:80'],
         ]);
         $data = $this->normalizeAirfareCity($data, $airTransportCsvService);
         $tariff->update($data);
 
-        return back()->with('success', 'Tarif tujuan berhasil diperbarui.');
+        return back()->with('success', 'Pemetaan tujuan berhasil diperbarui.');
     }
 
     public function destroyTariff(MasterTarif $tariff): RedirectResponse
     {
         if (PerjalananDinas::query()->where('kota_tujuan', $tariff->kota_tujuan)->exists()) {
             throw ValidationException::withMessages([
-                'tarif' => 'Tarif tidak dapat dihapus karena sudah digunakan. Ubah nilainya jika diperlukan.',
+                'tarif' => 'Tujuan tidak dapat dihapus karena sudah digunakan dalam perjalanan dinas.',
             ]);
         }
         $tariff->delete();
 
-        return back()->with('success', 'Tarif tujuan berhasil dihapus.');
+        return back()->with('success', 'Tujuan berhasil dihapus.');
     }
 
     public function storeAccount(Request $request): RedirectResponse

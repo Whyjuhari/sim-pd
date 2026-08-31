@@ -158,7 +158,20 @@ class StabilizationFlowTest extends TestCase
             'kota_tujuan' => 'Kendari',
             'uang_saku_per_hari' => 430000,
         ])->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('master_tarif', ['kota_tujuan' => 'Kendari']);
+        $tariff = MasterTarif::query()->where('kota_tujuan', 'Kendari')->firstOrFail();
+        $this->assertSame('0.00', $tariff->uang_saku_per_hari);
+
+        $this->put(route('program.tariffs.update', $tariff), [
+            'kota_tujuan' => 'Kendari',
+            'uang_saku_per_hari' => 99999999,
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('0.00', $tariff->fresh()->uang_saku_per_hari);
+
+        $this->put('/program/anggaran/batas', [
+            'batas_hotel' => 1,
+            'pagu_tiket' => 1,
+            'batas_transport_darat' => 1,
+        ])->assertNotFound();
 
         $this->actingAs($head)->get(route('dashboard.head'))
             ->assertOk()

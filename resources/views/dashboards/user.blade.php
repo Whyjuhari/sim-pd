@@ -4,10 +4,6 @@
 @section('page-subtitle',
     'Pantau tahapan perjalanan, lengkapi laporan dan realisasi, lalu unduh dokumen yang
     tersedia.')
-    {{-- @section('page-actions')
-    <a href="{{ route('profile.edit') }}" class="btn btn-outline-primary">
-        <i class="bi bi-person-circle"></i> Profil Saya</a>
-@endsection --}}
 
 @section('content')
     @if (session('warning'))
@@ -20,7 +16,7 @@
         <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
             <img src="{{ auth()->user()->photoUrl() }}" alt="Foto {{ auth()->user()->nama_lengkap }}"
                 class="employee-identity-avatar">
-            <div class="flex-grow-1 min-w-0">
+            <div class="grow min-w-0">
                 <h2 class="h5 mb-2 text-break">{{ auth()->user()->nama_lengkap }}</h2>
                 <div class="employee-identity-meta">
                     <span><i class="bi bi-person-vcard"></i> NIP {{ auth()->user()->nip ?: '-' }}</span>
@@ -31,6 +27,7 @@
         </div>
     </section>
 
+
     <div class="row g-3 mb-4">
         <div class="col-12 col-sm-6 col-lg-4"><x-ui.metric-card label="Total Perjalanan" :value="$travels->total()"
                 icon="briefcase-fill" tone="primary" hint="Riwayat tugas Anda" /></div>
@@ -39,7 +36,6 @@
         <div class="col-12 col-lg-4"><x-ui.metric-card label="Status Tanda Tangan" :value="$hasSignature ? 'Tersedia' : 'Belum tersedia'" :icon="$hasSignature ? 'pen-fill' : 'exclamation-triangle-fill'"
                 :tone="$hasSignature ? 'success' : 'warning'" hint="Diperlukan untuk cetak laporan" /></div>
     </div>
-
     <div class="card mb-4">
         <div class="card-header bg-white d-flex justify-content-between align-items-center gap-2">
             <h2 class="section-title"><span class="section-title-icon"><i class="bi bi-clock-history"></i></span> Riwayat
@@ -114,9 +110,11 @@
                             $previewId = 'employee-document-preview-' . $travel->id;
                             $finalTriggerId = 'employee-final-document-trigger-' . $travel->id;
                             $safeSptNumber = preg_replace('/[^A-Za-z0-9._-]+/', '_', $travel->no_spt) ?: 'SPT';
-                            $safeEmployeeName = preg_replace('/[^A-Za-z0-9._-]+/', '_', auth()->user()->nama_lengkap) ?: 'Pegawai';
-                            $canPrintFinal = $travel->status === \App\Models\PerjalananDinas::STATUS_APPROVED
-                                && auth()->user()->can('printTravelDocument', $travel);
+                            $safeEmployeeName =
+                                preg_replace('/[^A-Za-z0-9._-]+/', '_', auth()->user()->nama_lengkap) ?: 'Pegawai';
+                            $canPrintFinal =
+                                $travel->status === \App\Models\PerjalananDinas::STATUS_APPROVED &&
+                                auth()->user()->can('printTravelDocument', $travel);
                             $primaryUrl = match ($travel->status) {
                                 \App\Models\PerjalananDinas::STATUS_READY => $travel->laporan
                                     ? route('realizations.show', ['id' => $travel->id])

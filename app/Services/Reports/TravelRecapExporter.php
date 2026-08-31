@@ -30,6 +30,9 @@ class TravelRecapExporter
             $this->groupSheet($spreadsheet, 'Bulanan', 'Bulan', $groups['months']);
             $this->groupSheet($spreadsheet, 'Tujuan', 'Tujuan', $groups['destinations']);
             $this->groupSheet($spreadsheet, 'MAK', 'MAK / Akun Anggaran', $groups['accounts']);
+            if (isset($context['compliance'])) {
+                $this->complianceSheet($spreadsheet, $context['compliance']);
+            }
 
             if ($audience === 'program') {
                 $this->detailSheet($spreadsheet, $query);
@@ -137,6 +140,29 @@ class TravelRecapExporter
         $sheet->freezePane('A2');
         $sheet->getPageSetup()->setPrintArea("A1:L{$lastRow}");
         $this->configurePrint($sheet, PageSetup::ORIENTATION_LANDSCAPE);
+    }
+
+    private function complianceSheet(Spreadsheet $spreadsheet, array $summary): void
+    {
+        $sheet = $spreadsheet->createSheet();
+        $sheet->setTitle('Kepatuhan PMK');
+        $sheet->fromArray(['Indikator', 'Nilai'], null, 'A1');
+        $sheet->fromArray([
+            ['Rincian biaya diperiksa', (int) ($summary['items'] ?? 0)],
+            ['Dalam patokan PMK', (int) ($summary['within'] ?? 0)],
+            ['Melebihi patokan PMK', (int) ($summary['over'] ?? 0)],
+            ['Menggunakan tarif legacy', (int) ($summary['legacy'] ?? 0)],
+            ['Tanpa patokan tersedia', (int) ($summary['unavailable'] ?? 0)],
+            ['Perjalanan dengan pengecualian', (int) ($summary['travels_with_exceptions'] ?? 0)],
+            ['Total selisih di atas patokan', (float) ($summary['over_amount'] ?? 0)],
+            ['Tingkat kepatuhan patokan', ((int) ($summary['compliance_rate'] ?? 0)).'%'],
+        ], null, 'A2', true);
+        $sheet->getStyle('B8')->getNumberFormat()->setFormatCode('"Rp" #,##0');
+        $this->styleSheet($sheet, 'A1:B9');
+        $sheet->getColumnDimension('A')->setWidth(38);
+        $sheet->getColumnDimension('B')->setWidth(22);
+        $sheet->getPageSetup()->setPrintArea('A1:B9');
+        $this->configurePrint($sheet, PageSetup::ORIENTATION_PORTRAIT);
     }
 
     private function styleSheet($sheet, string $range): void

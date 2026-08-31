@@ -11,6 +11,7 @@ use App\Services\TravelCostCalculator;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -24,13 +25,6 @@ class TravelOrderController extends Controller
     public function __construct(
         private readonly TravelCostCalculator $calculator
     ) {}
-
-    /*
-     * =====================================================
-     * CREATE
-     * =====================================================
-     */
-
     public function create(): View
     {
         return view('travel.create', [
@@ -54,29 +48,17 @@ class TravelOrderController extends Controller
     public function store(
         Request $request
     ): RedirectResponse {
-        /*
-         * Validasi input menggunakan aturan yang sama
-         * dengan proses UPDATE.
-         */
+
         $data = $this->validatedData($request);
 
-        /*
-         * Lama perjalanan dan estimasi tidak dipercaya
-         * dari browser. Kita hitung kembali di server.
-         */
+
         [$days, $estimate, $rates] =
             $this->calculateTrip($data);
 
-        /*
-         * Satu UUID untuk seluruh pegawai
-         * dalam Surat Tugas ini.
-         */
+
         $sptGroupId =
             (string) Str::uuid();
 
-        /*
-         * Data yang sama untuk seluruh anggota SPT.
-         */
         $commonData =
             $this->commonTravelData(
                 $data,
@@ -124,13 +106,45 @@ class TravelOrderController extends Controller
             );
     }
 
+    public function previewCost(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'kota_tujuan' => ['required', 'string', 'max:50', 'exists:master_tarif,kota_tujuan'],
+            'tempat_berangkat' => ['required', 'string', 'max:50'],
+            'tgl_berangkat' => ['required', 'date'],
+            'tgl_kembali' => ['required', 'date', 'after_or_equal:tgl_berangkat'],
+            'angkutan' => ['required', Rule::in(['Pesawat Udara', 'Transportasi Darat'])],
+            'daily_allowance_category' => ['nullable', Rule::in(array_keys(DailyAllowanceRate::categoryLabels()))],
+            'spt_group_id' => ['nullable', 'uuid'],
+        ]);
 
-    /*
-     * =====================================================
-     * READ / DETAIL
-     * =====================================================
-     */
+        $existingTravel = null;
+        if (! empty($data['spt_group_id'])) {
+            $travels = $this->groupTravels($data['spt_group_id']);
+            if (! $this->canModify($travels)) {
+                throw ValidationException::withMessages([
+                    'spt_group_id' => 'SPT ini tidak dapat dihitung ulang karena proses perjalanan sudah berjalan.',
+                ]);
+            }
+            $existingTravel = $travels->first();
+        }
 
+        [$days, $estimate, $rates] = $this->calculateTrip($data, $existingTravel);
+
+        return response()->json([
+            'days' => $days,
+            'total' => $estimate,
+            'components' => $this->costPreviewComponents($rates, $days),
+            'has_fallback' => collect([
+                $rates['daily_allowance_source'] ?? null,
+                $rates['hotel_rate_source'] ?? null,
+                $rates['transport_rate_source'] ?? null,
+                $rates['terminal_origin_source'] ?? null,
+                $rates['terminal_destination_source'] ?? null,
+                $rates['airfare_rate_source'] ?? null,
+            ])->contains(fn($source): bool => in_array($source, ['legacy', 'unavailable'], true)),
+        ]);
+    }
     public function show(
         string $sptGroupId
     ): View {
@@ -166,10 +180,7 @@ class TravelOrderController extends Controller
                 $sptGroupId
             );
 
-        /*
-         * Jangan hanya menyembunyikan tombol.
-         * URL /edit juga harus dilindungi backend.
-         */
+
         if (! $this->canModify($travels)) {
             return redirect()
                 ->route(
@@ -226,11 +237,6 @@ class TravelOrderController extends Controller
     }
 
 
-    /*
-     * =====================================================
-     * UPDATE
-     * =====================================================
-     */
 
     public function update(
         Request $request,
@@ -258,10 +264,10 @@ class TravelOrderController extends Controller
 
         $commonData =
             $this->commonTravelData(
-            $data,
-            $days,
-            $estimate,
-            $rates
+                $data,
+                $days,
+                $estimate,
+                $rates
             );
 
         /*
@@ -657,7 +663,7 @@ class TravelOrderController extends Controller
                 'string',
                 'max:50',
                 Rule::exists('budget_accounts', 'code')->where(
-                    fn ($query) => $query->where('is_active', true)
+                    fn($query) => $query->where('is_active', true)
                 ),
             ],
         ]);
@@ -729,6 +735,99 @@ class TravelOrderController extends Controller
             $days,
             $estimate,
             $rates,
+        ];
+    }
+
+    /** @return array<int, array{label: string, rate: float, quantity: int, unit: string, total: float, source: string, tone: string}> */
+    private function costPreviewComponents(array $rates, int $days): array
+    {
+        $components = [
+            $this->costPreviewRow(
+                'Uang harian',
+                (float) $rates['daily_allowance'],
+                $days,
+                'hari',
+                (string) $rates['daily_allowance_source']
+            ),
+        ];
+
+        $nights = (int) $rates['hotel_nights'];
+        if ($nights > 0) {
+            $components[] = $this->costPreviewRow(
+                'Penginapan',
+                (float) $rates['hotel_per_day'],
+                $nights,
+                'malam',
+                (string) $rates['hotel_rate_source']
+            );
+        }
+
+        if (($rates['transport_rate_source'] ?? 'legacy') === 'pmk_air') {
+            $components[] = $this->costPreviewRow(
+                'Terminal asal',
+                (float) $rates['terminal_origin_one_way'],
+                2,
+                'kali',
+                (string) $rates['terminal_origin_source']
+            );
+            $components[] = $this->costPreviewRow(
+                'Tiket pesawat ekonomi PP',
+                (float) $rates['airfare_economy_pp'],
+                1,
+                'PP',
+                (string) $rates['airfare_rate_source']
+            );
+            $components[] = $this->costPreviewRow(
+                'Terminal tujuan',
+                (float) $rates['terminal_destination_one_way'],
+                2,
+                'kali',
+                (string) $rates['terminal_destination_source']
+            );
+        } elseif (($rates['transport_rate_source'] ?? 'legacy') === 'pmk_ground') {
+            $components[] = $this->costPreviewRow(
+                'Transportasi darat PP',
+                (float) $rates['ground_transport_one_way'],
+                2,
+                'arah',
+                'pmk'
+            );
+        } else {
+            $components[] = $this->costPreviewRow(
+                'Transportasi',
+                (float) $rates['transport_limit'],
+                1,
+                'perjalanan',
+                'legacy'
+            );
+        }
+
+        return $components;
+    }
+
+    private function costPreviewRow(
+        string $label,
+        float $rate,
+        int $quantity,
+        string $unit,
+        string $source
+    ): array {
+        return [
+            'label' => $label,
+            'rate' => $rate,
+            'quantity' => $quantity,
+            'unit' => $unit,
+            'total' => $rate * $quantity,
+            'source' => match ($source) {
+                'pmk', 'pmk_air', 'pmk_ground' => 'PMK',
+                'unavailable' => 'Tidak tersedia',
+                default => 'Legacy',
+            },
+            'tone' => match ($source) {
+                'pmk', 'pmk_air', 'pmk_ground' => 'success',
+                'unavailable' => 'danger',
+                default => 'warning',
+            },
         ];
     }
 

@@ -6,6 +6,7 @@ use App\Models\PerjalananDinas;
 use App\Models\PerjalananDinasStatusHistory;
 use App\Models\User;
 use App\Services\Reports\TravelRecapService;
+use App\Services\Reports\PmkComplianceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -127,7 +128,11 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function program(Request $request, TravelRecapService $recap): View
+    public function program(
+        Request $request,
+        TravelRecapService $recap,
+        PmkComplianceService $compliance
+    ): View
     {
         $filters = $recap->normalizeProgramFilters($request->validate($recap->programFilterRules()));
         $query = $recap->programQuery($filters);
@@ -141,6 +146,7 @@ class DashboardController extends Controller
                 'realized' => $summary['realized'],
             ],
             'recaps' => $recap->grouped($query),
+            'pmkCompliance' => $compliance->summarize($query),
             'filters' => $filters,
             'destinations' => PerjalananDinas::query()->distinct()->orderBy('kota_tujuan')->pluck('kota_tujuan'),
             'accounts' => PerjalananDinas::query()->whereNotNull('akun_anggaran')
@@ -219,7 +225,11 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function head(Request $request, TravelRecapService $recap): View
+    public function head(
+        Request $request,
+        TravelRecapService $recap,
+        PmkComplianceService $compliance
+    ): View
     {
         $year = min(2100, max(2000, (int) $request->query('year', now()->year)));
         $query = $recap->headQuery($year);
@@ -238,6 +248,7 @@ class DashboardController extends Controller
             ],
             'destinations' => $recaps['destinations']->take(5),
             'recaps' => $recaps,
+            'pmkCompliance' => $compliance->summarize($query),
             'travels' => (clone $query)->with('pegawai')->latest('id')->paginate(10)->withQueryString(),
         ]);
     }

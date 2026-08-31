@@ -45,6 +45,8 @@
         @endforeach
     </div>
 
+    <x-ui.pmk-compliance :summary="$pmkCompliance" title="Kepatuhan Biaya PMK" />
+
     <div class="row g-4 mb-4">
         <div class="col-lg-5">
             <div class="card h-100">

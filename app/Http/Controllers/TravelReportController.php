@@ -165,7 +165,7 @@ class TravelReportController extends Controller
 
                     $report->dokumentasi()->createMany(
                         array_map(
-                            fn (string $path, int $index): array => [
+                            fn(string $path, int $index): array => [
                                 'path' => $path,
                                 'urutan' => $index + 1,
                             ],
@@ -192,12 +192,6 @@ class TravelReportController extends Controller
             );
         }
 
-
-        /*
-         * Setelah laporan selesai:
-         *
-         * lanjut ke form biaya hotel + tiket.
-         */
         return redirect()
             ->route(
                 'realizations.show',
@@ -225,23 +219,11 @@ class TravelReportController extends Controller
             ->with('success', $message);
     }
 
-
-    /*
-     * =====================================================
-     * HELPER KEPEMILIKAN PERJALANAN
-     * =====================================================
-     */
     private function ownedReadyTravel(
         Request $request,
         PerjalananDinas $travel
     ): PerjalananDinas {
-        /*
-         * Kalau perjalanan bukan milik pegawai login,
-         * tampilkan 404.
-         *
-         * Dengan begitu kita tidak membocorkan
-         * keberadaan perjalanan milik pegawai lain.
-         */
+
         abort_if(
             (int) $travel->user_id
                 !==
@@ -249,11 +231,6 @@ class TravelReportController extends Controller
             404
         );
 
-
-        /*
-         * Laporan hanya boleh diedit sebelum
-         * realisasi dikirim.
-         */
         abort_if(
             $travel->status
                 !==

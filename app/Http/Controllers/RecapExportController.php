@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\Documents\PdfConverter;
 use App\Services\Reports\TravelRecapExporter;
 use App\Services\Reports\TravelRecapService;
+use App\Services\Reports\PmkComplianceService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
@@ -15,6 +16,7 @@ class RecapExportController extends Controller
         Request $request,
         string $format,
         TravelRecapService $recap,
+        PmkComplianceService $compliance,
         TravelRecapExporter $exporter,
         PdfConverter $converter
     ): BinaryFileResponse {
@@ -30,7 +32,11 @@ class RecapExportController extends Controller
             $query,
             $recap->summary($query),
             $recap->grouped($query),
-            ['period' => ($filters['from'] ?? 'awal').'-'.($filters['to'] ?? 'akhir'), 'period_label' => $periodLabel]
+            [
+                'period' => ($filters['from'] ?? 'awal').'-'.($filters['to'] ?? 'akhir'),
+                'period_label' => $periodLabel,
+                'compliance' => $compliance->summarize($query),
+            ]
         );
     }
 
@@ -38,6 +44,7 @@ class RecapExportController extends Controller
         Request $request,
         string $format,
         TravelRecapService $recap,
+        PmkComplianceService $compliance,
         TravelRecapExporter $exporter,
         PdfConverter $converter
     ): BinaryFileResponse {
@@ -52,7 +59,11 @@ class RecapExportController extends Controller
             $query,
             $recap->summary($query),
             $recap->grouped($query, $year),
-            ['period' => (string) $year, 'period_label' => 'Tahun '.$year]
+            [
+                'period' => (string) $year,
+                'period_label' => 'Tahun '.$year,
+                'compliance' => $compliance->summarize($query),
+            ]
         );
     }
 

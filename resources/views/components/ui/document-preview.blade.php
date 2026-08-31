@@ -1,7 +1,4 @@
-@props([
-    'id',
-    'documentNumber',
-])
+@props(['id', 'documentNumber'])
 
 <tr id="{{ $id }}" class="document-preview-row d-none" data-document-preview
     data-document-number="{{ $documentNumber }}">
@@ -25,7 +22,7 @@
 
             <div class="document-preview-loading d-none" data-document-preview-loading role="status">
                 <span class="spinner-border text-primary" aria-hidden="true"></span>
-                <div><strong>Menyiapkan dokumen...</strong><small>Proses konversi dapat memerlukan beberapa
+                <div><strong>Menyiapkan dokumen...</strong><small> memerlukan beberapa
                         saat.</small></div>
             </div>
 

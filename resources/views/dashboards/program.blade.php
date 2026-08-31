@@ -31,6 +31,8 @@
         </div>
     </div>
 
+    <x-ui.pmk-compliance :summary="$pmkCompliance" />
+
     <x-ui.recap-tabs :recaps="$recaps" id-prefix="program-recap" />
 
     <div class="card">

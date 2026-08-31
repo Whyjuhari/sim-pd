@@ -31,6 +31,8 @@
             </div>
         </div>
 
+        <x-ui.pmk-compliance :summary="$exceptionSummary" title="Ringkasan Pengecualian" />
+
         <form action="{{ route('verifications.store') }}" method="POST">
             @csrf
             <input type="hidden" name="id" value="{{ $travel->id }}">

@@ -156,6 +156,11 @@ Route::middleware('auth')->group(function (): void {
                 [TravelOrderController::class, 'store']
             )->name('travel-orders.store');
 
+            Route::post(
+                '/spt/preview-biaya',
+                [TravelOrderController::class, 'previewCost']
+            )->middleware('throttle:30,1')->name('travel-orders.cost-preview');
+
             Route::get(
                 '/spt/{sptGroupId}',
                 [TravelOrderController::class, 'show']
@@ -277,8 +282,6 @@ Route::middleware('auth')->group(function (): void {
             Route::get('/anggaran/transportasi-udara/{regulation}/csv-tiket', [AirTransportImportController::class, 'downloadAirfare'])
                 ->whereNumber('regulation')
                 ->name('program.air-transport.download-airfare');
-            Route::put('/anggaran/batas', [BudgetSettingController::class, 'updateSettings'])
-                ->name('program.budget.settings.update');
             Route::post('/anggaran/tarif', [BudgetSettingController::class, 'storeTariff'])
                 ->name('program.tariffs.store');
             Route::put('/anggaran/tarif/{tariff}', [BudgetSettingController::class, 'updateTariff'])

@@ -17,7 +17,7 @@
             <div class="metric-card metric-card-warning h-100">
                 <div class="metric-card-body">
                     <div class="metric-card-copy"><span class="metric-card-label">Aksi Utama</span><strong
-                            class="metric-card-value fs-5">SPT Kolektif</strong><span class="metric-card-hint">Satu surat
+                            class="metric-card-value fs-5">SPT</strong><span class="metric-card-hint">Satu surat
                             untuk beberapa pegawai</span></div>
                     <span class="metric-card-icon"><i class="bi bi-people-fill"></i></span>
                 </div>
@@ -124,8 +124,7 @@
                                 <div class="d-flex flex-wrap gap-2"><a
                                         href="{{ route('travel-orders.show', ['sptGroupId' => $travel->spt_group_id]) }}"
                                         class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> Detail</a><button
-                                        type="button" class="btn btn-sm btn-primary"
-                                        data-document-preview-trigger
+                                        type="button" class="btn btn-sm btn-primary" data-document-preview-trigger
                                         data-document-url="{{ route('documents.surat-tugas', ['id' => $travel->id]) }}"
                                         data-document-label="Surat Perintah Tugas"
                                         data-document-filename="SPT_{{ $safeSptNumber }}.pdf"

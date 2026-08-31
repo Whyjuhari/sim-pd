@@ -7,6 +7,7 @@ use App\Models\RealisasiRincian;
 use App\Services\RealizationDetailService;
 use App\Services\TravelCostCalculator;
 use App\Services\TravelStatusTransition;
+use App\Services\Reports\PmkComplianceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,8 @@ class VerificationController extends Controller
     public function __construct(
         private readonly TravelCostCalculator $calculator,
         private readonly TravelStatusTransition $transition,
-        private readonly RealizationDetailService $details
+        private readonly RealizationDetailService $details,
+        private readonly PmkComplianceService $compliance
     ) {}
 
     public function show(Request $request): View
@@ -33,11 +35,13 @@ class VerificationController extends Controller
             $travel->rincianRealisasi,
             $recommendation
         );
+        $exceptionSummary = $this->compliance->forTravel($travel);
 
         return view('travel.verification', compact(
             'travel',
             'recommendation',
-            'recommendedApprovals'
+            'recommendedApprovals',
+            'exceptionSummary'
         ));
     }
 

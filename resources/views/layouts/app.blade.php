@@ -27,9 +27,10 @@
     @if (session('success')) data-flash-success="{{ session('success') }}" @endif>
     <nav class="navbar app-navbar sticky-top">
         <div class="container-fluid app-navbar-inner">
-            <button class="btn app-menu-toggle d-xl-none" type="button" data-bs-toggle="offcanvas"
-                data-bs-target="#mobileNavigation" aria-controls="mobileNavigation" aria-label="Buka navigasi">
-                <i class="bi bi-list"></i>
+            <button class="btn app-menu-toggle d-xl-none d-inline-flex align-items-center justify-content-center"
+                type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNavigation"
+                aria-controls="mobileNavigation" aria-label="Buka navigasi">
+                <i class="bi bi-list fs-4"></i>
             </button>
 
             <a class="navbar-brand app-brand me-auto" href="{{ route('dashboard') }}">
@@ -48,8 +49,8 @@
                 <form method="POST" action="{{ route('logout') }}" class="m-0">
                     @csrf
                     <button class="btn app-logout-button" type="submit" title="Keluar dari aplikasi"
-                        aria-label="Keluar dari aplikasi"><i
-                            class="bi bi-box-arrow-right"></i><span class="d-none d-sm-inline">Keluar</span></button>
+                        aria-label="Keluar dari aplikasi"><i class="bi bi-box-arrow-right"></i><span
+                            class="d-none d-sm-inline">Keluar</span></button>
                 </form>
             </div>
         </div>
@@ -72,8 +73,7 @@
         <aside class="d-none d-xl-flex app-sidebar app-sidebar-desktop">@include('layouts.sidebar')</aside>
         <main class="app-main">
             <div class="app-content">
-                <x-ui.page-header :title="$pageTitle" :subtitle="!$isDashboard && $pageSubtitle !== '' ? $pageSubtitle : null"
-                    :show-breadcrumb="!$isDashboard">
+                <x-ui.page-header :title="$pageTitle" :subtitle="!$isDashboard && $pageSubtitle !== '' ? $pageSubtitle : null" :show-breadcrumb="!$isDashboard">
                     @yield('page-actions')
                 </x-ui.page-header>
 
