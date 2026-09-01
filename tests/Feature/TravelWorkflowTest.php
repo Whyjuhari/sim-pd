@@ -61,7 +61,9 @@ class TravelWorkflowTest extends TestCase
             ->assertSee('aria-expanded="false"', false)
             ->assertSeeText('Menyiapkan dokumen...')
             ->assertSeeText('Buka layar penuh')
-            ->assertSeeText('Unduh PDF');
+            ->assertSeeText('Unduh PDF')
+            ->assertSee('data-document-preview-frame', false)
+            ->assertSee('data-document-preview-mobile', false);
         $this->assertSame(1, substr_count($officerDashboard->getContent(), '/documents/surat-tugas?id='));
 
         $previewScript = file_get_contents(resource_path('js/document-preview.js'));
@@ -69,6 +71,8 @@ class TravelWorkflowTest extends TestCase
         $this->assertStringContainsString("Accept: 'application/pdf'", $previewScript);
         $this->assertStringContainsString('URL.createObjectURL(blob)', $previewScript);
         $this->assertStringContainsString('URL.revokeObjectURL(activeObjectUrl)', $previewScript);
+        $this->assertStringContainsString('usesPhoneFallback()', $previewScript);
+        $this->assertStringContainsString('frame.src = activeObjectUrl', $previewScript);
 
         $travel = PerjalananDinas::query()->where('user_id', $employeeA->id)->firstOrFail();
         $this->assertSame(3, $travel->lama_hari);

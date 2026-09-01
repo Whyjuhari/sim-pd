@@ -649,7 +649,7 @@ body {
 .app-body .btn {
     min-height: 42px;
     padding: .55rem .85rem;
-    border-radius: .72rem;
+    border-radius: .7rem;
     font-weight: 650;
 }
 
@@ -1322,6 +1322,41 @@ body {
     background: #e9eef4;
     border: 0;
     border-radius: .7rem;
+}
+
+.document-preview-mobile-fallback {
+    min-height: 260px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: .45rem;
+    padding: 1.5rem;
+    color: var(--sim-primary);
+    background: #e9eef4;
+    border-radius: .7rem;
+    text-align: center;
+}
+
+.document-preview-mobile-fallback:not(.d-none) {
+    display: flex;
+}
+
+.document-preview-mobile-fallback small {
+    max-width: 280px;
+    color: var(--sim-muted);
+}
+
+.document-preview-mobile-icon {
+    display: grid;
+    width: 54px;
+    height: 54px;
+    margin-bottom: .2rem;
+    place-items: center;
+    color: #b42318;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 6px 18px rgba(18, 45, 74, .1);
+    font-size: 1.45rem;
 }
 
 .document-preview-fallback {

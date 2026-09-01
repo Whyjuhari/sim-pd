@@ -256,7 +256,11 @@ class ReportingCompletionTest extends TestCase
 
         $program = User::factory()->role(User::ROLE_PROGRAM)->create();
         $this->actingAs($program)->get(route('dashboard.program', ['account' => 'MAK-A']))
-            ->assertOk()->assertSeeText('Jakarta')->assertSee('account=MAK-A', false);
+            ->assertOk()
+            ->assertSeeText('Jakarta')
+            ->assertSee('<option selected>MAK-A</option>', false)
+            ->assertDontSee(route('program.recap.export', ['format' => 'xlsx']), false)
+            ->assertDontSee(route('program.recap.export', ['format' => 'pdf']), false);
 
         $exporter = app(TravelRecapExporter::class);
         $programPath = $exporter->generate('program', $query, $summary, $groups, [

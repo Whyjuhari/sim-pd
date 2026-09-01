@@ -123,8 +123,9 @@
                             <td>
                                 <div class="d-flex flex-wrap gap-2"><a
                                         href="{{ route('travel-orders.show', ['sptGroupId' => $travel->spt_group_id]) }}"
-                                        class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> Detail</a><button
-                                        type="button" class="btn btn-sm btn-primary" data-document-preview-trigger
+                                        class="d-flex justify-content-center align-items-center btn btn-sm btn-outline-primary"><i
+                                            class="bi bi-eye"></i> Detail</a><button type="button"
+                                        class="btn btn-sm btn-primary" data-document-preview-trigger
                                         data-document-url="{{ route('documents.surat-tugas', ['id' => $travel->id]) }}"
                                         data-document-label="Surat Perintah Tugas"
                                         data-document-filename="SPT_{{ $safeSptNumber }}.pdf"

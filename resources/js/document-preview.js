@@ -12,7 +12,14 @@ if (previewTriggers.length > 0) {
     let focusAfterLoading = null;
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const phoneViewport = window.matchMedia('(max-width: 575.98px)');
     const panelPart = (panel, selector) => panel.querySelector(selector);
+    const usesPhoneFallback = () => {
+        const userAgentDataMobile = navigator.userAgentData?.mobile === true;
+        const mobileUserAgent = /Android.*Mobile|iPhone|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        return phoneViewport.matches || userAgentDataMobile || mobileUserAgent;
+    };
 
     const setTriggerAvailability = (disabled) => {
         previewTriggers.forEach((trigger) => {
@@ -28,13 +35,35 @@ if (previewTriggers.length > 0) {
         }
     };
 
+    const applyViewerMode = (panel) => {
+        const frame = panelPart(panel, '[data-document-preview-frame]');
+        const mobileFallback = panelPart(panel, '[data-document-preview-mobile]');
+        const useFallback = usesPhoneFallback();
+
+        frame?.classList.toggle('d-none', useFallback);
+        mobileFallback?.classList.toggle('d-none', !useFallback);
+
+        if (!frame) return;
+
+        if (useFallback) {
+            frame.removeAttribute('src');
+        } else if (activeObjectUrl && frame.src !== activeObjectUrl) {
+            frame.src = activeObjectUrl;
+        }
+    };
+
     const resetPanel = (panel) => {
         const frame = panelPart(panel, '[data-document-preview-frame]');
+        const mobileFallback = panelPart(panel, '[data-document-preview-mobile]');
         const openLink = panelPart(panel, '[data-document-preview-open]');
         const downloadLink = panelPart(panel, '[data-document-preview-download]');
         const fallbackLink = panelPart(panel, '[data-document-preview-fallback]');
 
-        if (frame) frame.removeAttribute('src');
+        if (frame) {
+            frame.removeAttribute('src');
+            frame.classList.remove('d-none');
+        }
+        mobileFallback?.classList.add('d-none');
         if (openLink) openLink.removeAttribute('href');
         if (downloadLink) {
             downloadLink.removeAttribute('href');
@@ -118,11 +147,9 @@ if (previewTriggers.length > 0) {
     };
 
     const showDocument = (panel, objectUrl, filename) => {
-        const frame = panelPart(panel, '[data-document-preview-frame]');
         const openLink = panelPart(panel, '[data-document-preview-open]');
         const downloadLink = panelPart(panel, '[data-document-preview-download]');
 
-        if (frame) frame.src = objectUrl;
         if (openLink) {
             openLink.href = objectUrl;
             openLink.classList.remove('d-none');
@@ -136,9 +163,10 @@ if (previewTriggers.length > 0) {
         panelPart(panel, '[data-document-preview-loading]')?.classList.add('d-none');
         panelPart(panel, '[data-document-preview-error]')?.classList.add('d-none');
         panelPart(panel, '[data-document-preview-viewer]')?.classList.remove('d-none');
+        applyViewerMode(panel);
 
         const status = panelPart(panel, '[data-document-preview-status]');
-        if (status) status.textContent = 'Dokumen siap';
+        if (status) status.textContent = usesPhoneFallback() ? 'Dokumen siap dibuka' : 'Dokumen siap';
 
         panel.scrollIntoView({
             behavior: prefersReducedMotion.matches ? 'auto' : 'smooth',
@@ -232,5 +260,8 @@ if (previewTriggers.length > 0) {
         });
     });
 
+    phoneViewport.addEventListener?.('change', () => {
+        if (activePanel && activeObjectUrl) applyViewerMode(activePanel);
+    });
     window.addEventListener('pagehide', revokeObjectUrl);
 }

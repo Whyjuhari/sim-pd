@@ -136,10 +136,11 @@ class RoleNavigationTest extends TestCase
     {
         $response->assertOk();
         $content = $response->getContent();
+        $normalizedContent = preg_replace('/\s+/', ' ', $content);
 
-        $this->assertSame(2, substr_count($content, "<span>{$label}</span>"));
-        $this->assertSame(0, substr_count($content, '<span>Dashboard</span>'));
-        $this->assertSame(2, substr_count($content, 'class="nav-link active" href="'.$url.'"'));
+        $this->assertSame(2, substr_count($normalizedContent, "<span>{$label}</span>"));
+        $this->assertSame(0, substr_count($normalizedContent, '<span>Dashboard</span>'));
+        $this->assertSame(2, substr_count($normalizedContent, 'class="nav-link active" href="'.$url.'"'));
     }
 
     private function createTravel(User $employee, string $status = PerjalananDinas::STATUS_READY): PerjalananDinas

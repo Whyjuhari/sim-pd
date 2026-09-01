@@ -1,7 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Master Anggaran - SIM-PD')
 @section('brand', 'Master Anggaran')
-@section('page-subtitle', 'Kelola batas biaya, tarif uang harian per tujuan, dan Mata Anggaran Kegiatan.')
 @section('page-actions')
     <a href="{{ route('dashboard.program') }}" class="btn btn-outline-primary">
         <i class="bi bi-arrow-left"></i> Kembali ke Monitoring</a>
@@ -146,7 +145,8 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-4">Belum ada dataset PMK yang
+                                        <td colspan="4" class="p-5 text-center text-muted py-4">Belum ada dataset PMK
+                                            yang
                                             disimpan.</td>
                                     </tr>
                                 @endforelse
@@ -469,42 +469,80 @@
     <div class="row g-4">
         <div class="col-xl-7">
             <div class="card shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <span class="fw-bold">Master Tujuan & Pemetaan PMK</span>
-                <form method="GET" class="d-flex gap-2">
-                    <input name="q" value="{{ $search }}" class="form-control form-control-sm" placeholder="Cari kota">
-                    <button class="btn btn-sm btn-outline-primary" aria-label="Cari tarif"><i class="bi bi-search"></i></button>
-                </form>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="{{ route('program.tariffs.store') }}" class="row g-2 mb-4">
-                    @csrf
-                    <div class="col-md-4"><label for="new-city" class="visually-hidden">Kota tujuan</label><input id="new-city" name="kota_tujuan" class="form-control" placeholder="Kota tujuan" required></div>
-                    <div class="col-md-3"><label for="new-province" class="visually-hidden">Provinsi</label><select id="new-province" name="province_id" class="form-select"><option value="">Pilih provinsi</option>@foreach ($provinces as $province)<option value="{{ $province->id }}">{{ $province->name }}</option>@endforeach</select></div>
-                    <div class="col-md-4"><label for="new-airport" class="visually-hidden">Kota bandara PMK</label><select id="new-airport" name="airfare_city" class="form-select"><option value="">Bandara belum dipetakan</option>@foreach ($airfareCities as $city)<option value="{{ $city }}">{{ $city }}</option>@endforeach</select></div>
-                    <div class="col-md-1"><button class="btn btn-success w-100" aria-label="Tambah tujuan"><i class="bi bi-plus-lg"></i></button></div>
-                </form>
-                @foreach ($tariffs as $tariff)
-                    <form method="POST" action="{{ route('program.tariffs.update', $tariff) }}" class="row g-2 align-items-center border-top py-2">
-                        @csrf @method('PUT')
-                        <div class="col-md-3"><input name="kota_tujuan" value="{{ $tariff->kota_tujuan }}" class="form-control form-control-sm" aria-label="Kota tujuan" required></div>
-                        <div class="col-md-3"><select name="province_id" class="form-select form-select-sm" aria-label="Provinsi {{ $tariff->kota_tujuan }}"><option value="">Belum dipetakan</option>@foreach ($provinces as $province)<option value="{{ $province->id }}" @selected($tariff->province_id === $province->id)>{{ $province->name }}</option>@endforeach</select></div>
-                        <div class="col-md-4"><select name="airfare_city" class="form-select form-select-sm" aria-label="Kota bandara {{ $tariff->kota_tujuan }}"><option value="">Bandara belum dipetakan</option>@foreach ($airfareCities as $city)<option value="{{ $city }}" @selected($tariff->airfare_city === $city)>{{ $city }}</option>@endforeach</select></div>
-                        <div class="col-md-2 d-flex gap-1">
-                            <button class="btn btn-sm btn-outline-primary flex-fill">Simpan</button>
-                            <button type="submit" form="delete-tariff-{{ $tariff->id }}" class="btn btn-sm btn-outline-danger"
-                                aria-label="Hapus tujuan {{ $tariff->kota_tujuan }}"
-                                data-sim-confirm
-                                data-sim-confirm-title="Hapus tujuan?"
-                                data-sim-confirm-text="Tujuan {{ $tariff->kota_tujuan }} akan dihapus. SPT lama tetap menggunakan snapshotnya."
-                                data-sim-confirm-button="Ya, hapus tujuan"
-                                data-sim-confirm-tone="danger"><i class="bi bi-trash"></i></button>
-                        </div>
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">Master Tujuan & Pemetaan PMK</span>
+                    <form method="GET" class="d-flex gap-2">
+                        <input name="q" value="{{ $search }}" class="form-control form-control-sm"
+                            placeholder="Cari kota">
+                        <button class="btn btn-sm btn-outline-primary" aria-label="Cari tarif"><i
+                                class="bi bi-search"></i></button>
                     </form>
-                    <form id="delete-tariff-{{ $tariff->id }}" method="POST" action="{{ route('program.tariffs.destroy', $tariff) }}" class="d-none">@csrf @method('DELETE')</form>
-                @endforeach
-                {{ $tariffs->links() }}
-            </div>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ route('program.tariffs.store') }}" class="row g-2 mb-4">
+                        @csrf
+                        <div class="col-md-4"><label for="new-city" class="visually-hidden">Kota tujuan</label><input
+                                id="new-city" name="kota_tujuan" class="form-control" placeholder="Kota tujuan"
+                                required></div>
+                        <div class="col-md-3"><label for="new-province" class="visually-hidden">Provinsi</label><select
+                                id="new-province" name="province_id" class="form-select">
+                                <option value="">Pilih provinsi</option>
+                                @foreach ($provinces as $province)
+                                    <option value="{{ $province->id }}">{{ $province->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4"><label for="new-airport" class="visually-hidden">Kota bandara
+                                PMK</label><select id="new-airport" name="airfare_city" class="form-select">
+                                <option value="">Bandara belum dipetakan</option>
+                                @foreach ($airfareCities as $city)
+                                    <option value="{{ $city }}">{{ $city }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-1"><button class="btn btn-success w-100" aria-label="Tambah tujuan"><i
+                                    class="bi bi-plus-lg"></i></button></div>
+                    </form>
+                    @foreach ($tariffs as $tariff)
+                        <form method="POST" action="{{ route('program.tariffs.update', $tariff) }}"
+                            class="row g-2 align-items-center border-top py-2">
+                            @csrf @method('PUT')
+                            <div class="col-md-3"><input name="kota_tujuan" value="{{ $tariff->kota_tujuan }}"
+                                    class="form-control form-control-sm" aria-label="Kota tujuan" required></div>
+                            <div class="col-md-3"><select name="province_id" class="form-select form-select-sm"
+                                    aria-label="Provinsi {{ $tariff->kota_tujuan }}">
+                                    <option value="">Belum dipetakan</option>
+                                    @foreach ($provinces as $province)
+                                        <option value="{{ $province->id }}" @selected($tariff->province_id === $province->id)>
+                                            {{ $province->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4"><select name="airfare_city" class="form-select form-select-sm"
+                                    aria-label="Kota bandara {{ $tariff->kota_tujuan }}">
+                                    <option value="">Bandara belum dipetakan</option>
+                                    @foreach ($airfareCities as $city)
+                                        <option value="{{ $city }}" @selected($tariff->airfare_city === $city)>
+                                            {{ $city }}</option>
+                                    @endforeach
+                                </select></div>
+                            <div class="col-md-2 d-flex gap-1">
+                                <button class="btn btn-sm btn-outline-primary flex-fill">Simpan</button>
+                                <button type="submit" form="delete-tariff-{{ $tariff->id }}"
+                                    class="btn btn-sm btn-outline-danger"
+                                    aria-label="Hapus tujuan {{ $tariff->kota_tujuan }}" data-sim-confirm
+                                    data-sim-confirm-title="Hapus tujuan?"
+                                    data-sim-confirm-text="Tujuan {{ $tariff->kota_tujuan }} akan dihapus. SPT lama tetap menggunakan snapshotnya."
+                                    data-sim-confirm-button="Ya, hapus tujuan" data-sim-confirm-tone="danger"><i
+                                        class="bi bi-trash"></i></button>
+                            </div>
+                        </form>
+                        <form id="delete-tariff-{{ $tariff->id }}" method="POST"
+                            action="{{ route('program.tariffs.destroy', $tariff) }}" class="d-none">@csrf
+                            @method('DELETE')</form>
+                    @endforeach
+                    {{ $tariffs->links() }}
+                </div>
             </div>
         </div>
         <div class="col-xl-5">

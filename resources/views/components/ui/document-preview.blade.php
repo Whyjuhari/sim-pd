@@ -42,9 +42,15 @@
             </div>
 
             <div class="document-preview-viewer d-none" data-document-preview-viewer>
+                <div class="document-preview-mobile-fallback d-none" data-document-preview-mobile role="status">
+                    <span class="document-preview-mobile-icon" aria-hidden="true"><i
+                            class="bi bi-file-earmark-pdf"></i></span>
+                    <strong>Dokumen siap dibuka</strong>
+                    <small>Gunakan tombol Buka layar penuh atau Unduh PDF.</small>
+                </div>
                 <iframe data-document-preview-frame title="PDF {{ $documentNumber }}"></iframe>
-                <p class="document-preview-fallback mb-0">Jika pratinjau tidak didukung oleh browser, gunakan tombol
-                    <strong>Buka layar penuh</strong> atau <strong>Unduh PDF</strong>.
+                <p class="document-preview-fallback mb-0">Pada ponsel, gunakan tombol <strong>Buka layar
+                        penuh</strong> atau <strong>Unduh PDF</strong>.
                 </p>
             </div>
         </section>
