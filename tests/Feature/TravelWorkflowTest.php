@@ -63,7 +63,13 @@ class TravelWorkflowTest extends TestCase
             ->assertSeeText('Buka layar penuh')
             ->assertSeeText('Unduh PDF')
             ->assertSee('data-document-preview-frame', false)
-            ->assertSee('data-document-preview-mobile', false);
+            ->assertSee('data-document-preview-mobile', false)
+            ->assertSee('data-document-preview-pdfjs', false)
+            ->assertSee('data-document-pdfjs-page-status', false)
+            ->assertSee('data-document-pdfjs-zoom-in', false)
+            ->assertSee('data-document-pdfjs-fit-width', false)
+            ->assertSee('data-document-pdfjs-canvas', false)
+            ->assertSee('data-document-pdfjs-print', false);
         $this->assertSame(1, substr_count($officerDashboard->getContent(), '/documents/surat-tugas?id='));
 
         $previewScript = file_get_contents(resource_path('js/document-preview.js'));
@@ -71,8 +77,17 @@ class TravelWorkflowTest extends TestCase
         $this->assertStringContainsString("Accept: 'application/pdf'", $previewScript);
         $this->assertStringContainsString('URL.createObjectURL(blob)', $previewScript);
         $this->assertStringContainsString('URL.revokeObjectURL(activeObjectUrl)', $previewScript);
-        $this->assertStringContainsString('usesPhoneFallback()', $previewScript);
+        $this->assertStringContainsString('usesPdfJsViewer()', $previewScript);
+        $this->assertStringContainsString("import('pdfjs-dist/legacy/build/pdf.mjs')", $previewScript);
+        $this->assertStringContainsString('pdfJs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl', $previewScript);
+        $this->assertStringContainsString('pdfJs.getDocument({ data: bytes })', $previewScript);
+        $this->assertStringContainsString('loadingTask.destroy()', $previewScript);
+        $this->assertStringContainsString('pdfFitWidth = true', $previewScript);
+        $this->assertStringContainsString('renderCurrentPdfPage', $previewScript);
         $this->assertStringContainsString('frame.src = activeObjectUrl', $previewScript);
+
+        $package = json_decode(file_get_contents(base_path('package.json')), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame('6.3.289', $package['dependencies']['pdfjs-dist'] ?? null);
 
         $travel = PerjalananDinas::query()->where('user_id', $employeeA->id)->firstOrFail();
         $this->assertSame(3, $travel->lama_hari);

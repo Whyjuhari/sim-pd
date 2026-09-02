@@ -7,6 +7,8 @@ use App\Models\PerjalananDinas;
 use App\Models\User;
 use App\Repositories\PerjalananDinasRepository;
 use App\Services\Documents\SuratTugasDocxGenerator;
+use DOMDocument;
+use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -116,6 +118,61 @@ class DocumentGenerationTest extends TestCase
             route('documents.surat-tugas', ['id' => $travels->get(1)->id])
         );
         $response->assertOk()->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_surat_tugas_closing_block_is_kept_together_in_the_template(): void
+    {
+        $documentXml = $this->readDocxPart(
+            config('sim_pd.documents.templates.surat_tugas'),
+            'word/document.xml',
+        );
+
+        $document = new DOMDocument;
+        $this->assertTrue($document->loadXML($documentXml));
+
+        $xpath = new DOMXPath($document);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        $xpath->registerNamespace('wp', 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing');
+
+        $closingTables = $xpath->query(
+            '//w:tbl[.//w:t[contains(., "Demikian Surat Tugas ini dibuat")]]'
+        );
+        $this->assertNotFalse($closingTables);
+        $this->assertSame(1, $closingTables->length);
+
+        $closingTable = $closingTables->item(0);
+        $this->assertNotNull($closingTable);
+
+        $closingText = $closingTable->textContent;
+        $this->assertSame(1, substr_count($closingText, 'Demikian Surat Tugas ini dibuat'));
+        $this->assertSame(1, substr_count($closingText, '${tanggal_surat}'));
+        $this->assertSame(1, substr_count($closingText, '${ttd}'));
+        $this->assertSame(1, substr_count($closingText, 'Ashari Arifuddin, S.T., M.M'));
+
+        $outerRows = $xpath->query('./w:tr', $closingTable);
+        $this->assertNotFalse($outerRows);
+        $this->assertSame(2, $outerRows->length);
+
+        foreach ($outerRows as $row) {
+            $this->assertSame(1, $xpath->query('./w:trPr/w:cantSplit', $row)->length);
+        }
+
+        foreach (['Demikian Surat Tugas ini dibuat', 'Pangkep,', '${ttd}'] as $text) {
+            $keptParagraphs = $xpath->query(
+                './/w:p[.//w:t[contains(., "'.$text.'")]]/w:pPr/w:keepNext[not(@w:val) or @w:val != "0"]',
+                $closingTable,
+            );
+            $this->assertNotFalse($keptParagraphs);
+            $this->assertSame(1, $keptParagraphs->length, "Paragraf {$text} harus memakai keepNext.");
+        }
+
+        $finalNameKeepNext = $xpath->query(
+            './/w:p[.//w:t[contains(., "Ashari Arifuddin")]]/w:pPr/w:keepNext[not(@w:val) or @w:val != "0"]',
+            $closingTable,
+        );
+        $this->assertNotFalse($finalNameKeepNext);
+        $this->assertSame(0, $finalNameKeepNext->length);
+        $this->assertSame(0, $xpath->query('.//wp:anchor', $closingTable)->length);
     }
 
     private function documentFixture(): array

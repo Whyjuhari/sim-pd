@@ -6,7 +6,8 @@
         <div class="col-lg-9">
             <div class="card shadow-sm">
                 <div class="card-body p-4">
-                    <form action="{{ route('travel-orders.store') }}" method="post">@csrf
+                    <form action="{{ route('travel-orders.store') }}" method="post">
+                        @csrf
                         <h6 class="text-muted border-bottom pb-2 mb-3">Data Surat & Tujuan</h6>
                         <div class="mb-3"><label class="form-label fw-bold">Nomor SPT</label><input type="text"
                                 name="no_spt" value="{{ old('no_spt') }}" class="form-control"
@@ -42,7 +43,8 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="col-2"><button type="button" class="btn btn-danger w-100 remove-employee"
+                                    <div class="col-2"><button type="button"
+                                            class="d-flex justify-content-center align-items-center btn btn-danger remove-employee"
                                             {{ $loop->first ? 'disabled' : '' }}><i class="bi bi-trash"></i></button></div>
                                 </div>
                             @endforeach

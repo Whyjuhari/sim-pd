@@ -61,7 +61,6 @@
         <div class="offcanvas-header">
             <div>
                 <div class="app-drawer-eyebrow">SIM-PD BPVP Pangkep</div>
-                <h5 class="offcanvas-title" id="mobileNavigationLabel">Menu {{ $roleLabel }}</h5>
             </div>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"
                 aria-label="Tutup"></button>

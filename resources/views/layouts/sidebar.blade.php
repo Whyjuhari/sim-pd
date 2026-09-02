@@ -51,7 +51,7 @@
     <div class="app-sidebar-heading mt-4">Akun</div>
     <nav class="nav flex-column" aria-label="Navigasi akun">
         <a class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}"
-            href="{{ route('profile.edit') }}"><i class="bi bi-person-gear"></i><span>Profil & Keamanan</span></a>
+            href="{{ route('profile.edit') }}"><i class="bi bi-person-gear"></i><span>Profil</span></a>
     </nav>
 </div>
 

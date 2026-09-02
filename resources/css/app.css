@@ -117,7 +117,6 @@ body {
 .app-sidebar {
     min-height: calc(100vh - 64px);
     background: #fff;
-    border-right: 1px solid #e5e7eb;
     padding: 1.25rem .85rem;
 }
 
@@ -464,7 +463,6 @@ body {
     margin-bottom: .28rem;
     padding: .7rem .8rem;
     color: #cfdeeb;
-    border: 1px solid transparent;
     border-radius: .8rem;
     font-weight: 600;
 }
@@ -524,7 +522,7 @@ body {
 }
 
 .app-navigation-drawer {
-    --bs-offcanvas-width: min(86vw, 330px);
+    --bs-offcanvas-width: min(80vw, 200px);
     color: #fff;
     background: var(--sim-primary-dark);
 }
@@ -1324,6 +1322,172 @@ body {
     border-radius: .7rem;
 }
 
+.document-pdfjs {
+    min-width: 0;
+    overflow: hidden;
+    background: #202327;
+    border: 1px solid #15181b;
+    border-radius: .55rem;
+}
+
+.document-pdfjs-toolbar {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .3rem;
+    min-height: 52px;
+    padding: .35rem;
+    overflow-x: auto;
+    color: #fff;
+    background: #30343a;
+    border-bottom: 1px solid #111417;
+    scrollbar-width: thin;
+    scrollbar-color: #69717a #30343a;
+    -webkit-overflow-scrolling: touch;
+}
+
+.document-pdfjs-tool {
+    display: inline-grid;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    place-items: center;
+    color: #fff;
+    background: #454a51;
+    border: 1px solid #5c626a;
+    border-radius: .38rem;
+    font-size: 1rem;
+    line-height: 1;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+.document-pdfjs-tool:hover:not(:disabled),
+.document-pdfjs-tool:focus-visible,
+.document-pdfjs-tool.is-active {
+    color: #fff;
+    background: var(--sim-primary);
+    border-color: #86b7fe;
+    outline: 0;
+}
+
+.document-pdfjs-tool:focus-visible {
+    box-shadow: 0 0 0 3px rgba(134, 183, 254, .35);
+}
+
+.document-pdfjs-tool:disabled {
+    cursor: not-allowed;
+    opacity: .38;
+}
+
+.document-pdfjs-page-status,
+.document-pdfjs-zoom-status {
+    display: inline-grid;
+    flex: 0 0 44px;
+    min-width: 44px;
+    height: 40px;
+    place-items: center;
+    color: #fff;
+    font-size: .76rem;
+    font-weight: 800;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.document-pdfjs-zoom-status {
+    flex-basis: 46px;
+    min-width: 46px;
+}
+
+.document-pdfjs-loading {
+    display: flex;
+    min-height: 300px;
+    align-items: center;
+    justify-content: center;
+    gap: .65rem;
+    color: #fff;
+    background: #202327;
+    font-size: .85rem;
+    font-weight: 700;
+}
+
+.document-pdfjs-pages {
+    height: clamp(520px, 70vh, 820px);
+    overflow: auto;
+    padding: .55rem;
+    background: #202327;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable both-edges;
+    -webkit-overflow-scrolling: touch;
+}
+
+.document-pdfjs-pages:focus-visible {
+    outline: 3px solid rgba(15, 91, 167, .3);
+    outline-offset: -3px;
+}
+
+.document-pdfjs-page {
+    position: relative;
+    width: 1px;
+    height: 1px;
+    margin: 0 auto;
+    overflow: hidden;
+    background: #fff;
+    border-radius: .1rem;
+    box-shadow: 0 5px 18px rgba(0, 0, 0, .42);
+}
+
+.document-pdfjs-canvas {
+    display: block;
+    max-width: none;
+    background: #fff;
+}
+
+.document-pdfjs-page-loading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--sim-primary);
+    background: rgba(255, 255, 255, .88);
+}
+
+.document-preview-panel:fullscreen {
+    display: flex;
+    width: 100vw;
+    height: 100dvh;
+    padding: .5rem;
+    flex-direction: column;
+    overflow: hidden;
+    background: #eef3f8;
+    border: 0;
+    border-radius: 0;
+}
+
+.document-preview-panel:fullscreen .document-preview-viewer,
+.document-preview-panel:fullscreen .document-pdfjs {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+}
+
+.document-preview-panel:fullscreen .document-pdfjs-pages {
+    height: auto;
+    flex: 1 1 auto;
+}
+
+.document-preview-open-label-mobile {
+    display: none;
+}
+
+.document-pdfjs:not(.d-none)~.document-preview-fallback,
+.document-preview-mobile-fallback:not(.d-none)~.document-preview-fallback {
+    display: none;
+}
+
 .document-preview-mobile-fallback {
     min-height: 260px;
     align-items: center;
@@ -1364,6 +1528,10 @@ body {
     color: var(--sim-muted);
     font-size: .75rem;
     text-align: center;
+}
+
+.document-pdfjs-print-root {
+    display: none;
 }
 
 .quick-actions {
@@ -1664,6 +1832,14 @@ body {
 }
 
 @media (max-width: 1199.98px) {
+    .document-preview-open-label-desktop {
+        display: none;
+    }
+
+    .document-preview-open-label-mobile {
+        display: inline;
+    }
+
     .app-content {
         padding: 1.25rem;
     }
@@ -1940,6 +2116,18 @@ body {
         min-height: 420px;
     }
 
+    .document-pdfjs-toolbar {
+        justify-content: flex-start;
+        padding: .3rem;
+    }
+
+    .document-pdfjs-pages {
+        height: min(68dvh, 700px);
+        min-height: 420px;
+        padding: .4rem;
+        scrollbar-gutter: auto;
+    }
+
     .document-preview-loading,
     .document-preview-error {
         min-height: 200px;
@@ -2145,6 +2333,33 @@ body {
 }
 
 @media (max-width: 575.98px) {
+    .document-pdfjs-toolbar {
+        display: grid;
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+        gap: .18rem;
+        min-height: 48px;
+        padding: .25rem;
+        overflow-x: visible;
+    }
+
+    .document-pdfjs-tool,
+    .document-pdfjs-page-status,
+    .document-pdfjs-zoom-status {
+        width: 100%;
+        min-width: 0;
+        height: 40px;
+        flex: none;
+    }
+
+    .document-pdfjs-tool {
+        font-size: .9rem;
+    }
+
+    .document-pdfjs-page-status,
+    .document-pdfjs-zoom-status {
+        font-size: .68rem;
+    }
+
     .sim-dialog-popup {
         padding: 1.1rem !important;
     }
@@ -2156,5 +2371,36 @@ body {
     .sim-dialog-button {
         width: 100%;
 
+    }
+}
+
+@media (max-width: 359.98px) {
+    .document-pdfjs-toolbar {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: .25rem;
+        min-height: auto;
+    }
+}
+
+@media print {
+    body.document-preview-printing>*:not(.document-pdfjs-print-root) {
+        display: none !important;
+    }
+
+    body.document-preview-printing .document-pdfjs-print-root {
+        display: block !important;
+    }
+
+    .document-pdfjs-print-root img {
+        display: block;
+        width: 100%;
+        height: auto;
+        break-after: page;
+        page-break-after: always;
+    }
+
+    .document-pdfjs-print-root img:last-child {
+        break-after: auto;
+        page-break-after: auto;
     }
 }
