@@ -121,23 +121,23 @@
                                 </div>
                             </td>
                             <td>
-                                <div class="d-flex flex-wrap gap-2"><a
+                                <div class="d-flex flex-wrap align-items-center gap-2"><a
                                         href="{{ route('travel-orders.show', ['sptGroupId' => $travel->spt_group_id]) }}"
                                         class="d-flex justify-content-center align-items-center btn btn-sm btn-outline-primary"><i
-                                            class="bi bi-eye"></i> Detail</a><button type="button"
+                                            class="bi bi-eye me-1"></i> Detail</a><button type="button"
                                         class="btn btn-sm btn-primary" data-document-preview-trigger
                                         data-document-url="{{ route('documents.surat-tugas', ['id' => $travel->id]) }}"
                                         data-document-label="Surat Perintah Tugas"
                                         data-document-filename="SPT_{{ $safeSptNumber }}.pdf"
                                         aria-controls="{{ $previewId }}" aria-expanded="false"><i
-                                            class="bi bi-printer"></i> Cetak</button></div>
+                                            class="bi bi-printer me-1"></i> Cetak</button></div>
                             </td>
                         </tr>
                         <x-ui.document-preview :id="$previewId" :document-number="$travel->no_spt" />
                     @empty
                         <tr>
                             <td colspan="5"><x-ui.empty-state icon="search" title="Surat tugas tidak ditemukan"
-                                    description="Ubah pencarian atau reset filter untuk melihat data lainnya.">
+                                    description="Ubah pencarian atau reset filter untuk melihat data npm lainnya.">
                                     @if ($filters['q'] !== '' || $filters['status'] !== '' || $filters['destination'] !== '')
                                         <a href="{{ route('dashboard.officer') }}"
                                             class="btn btn-outline-primary btn-sm">Reset pencarian</a>
