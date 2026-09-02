@@ -2382,6 +2382,122 @@ body {
     }
 }
 
+/* Officer SPT records: desktop stays tabular; tablets use one structured card per SPT. */
+@media (max-width: 1199.98px) {
+    .officer-records tbody {
+        grid-template-columns: 1fr;
+    }
+
+    .officer-records tbody tr.officer-record {
+        grid-template-areas:
+            "number status"
+            "employees travel"
+            "actions actions";
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .officer-records tbody tr.officer-record>td {
+        display: block !important;
+        padding: .85rem 1rem !important;
+    }
+
+    .officer-records tbody tr.officer-record>td::before {
+        display: block;
+        margin-bottom: .35rem;
+    }
+
+    .officer-record-number {
+        grid-area: number;
+        background: #f8fafc !important;
+    }
+
+    .officer-record-employees {
+        grid-area: employees;
+    }
+
+    .officer-record-travel {
+        grid-area: travel;
+        border-left: 1px solid #edf1f5;
+    }
+
+    .officer-record-status {
+        grid-area: status;
+        background: #f8fafc !important;
+        border-left: 1px solid #edf1f5;
+    }
+
+    .officer-record-actions {
+        grid-area: actions;
+        border-bottom: 0 !important;
+    }
+
+    .officer-record-value {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .officer-record-number .officer-record-value {
+        color: var(--sim-primary);
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .officer-record-employees ol {
+        margin-bottom: .25rem !important;
+    }
+
+    .officer-record-employees li+li {
+        margin-top: .2rem;
+    }
+
+    .officer-record-travel small,
+    .officer-record-employees small {
+        display: block;
+        margin-top: .25rem;
+        line-height: 1.45;
+    }
+
+    .officer-record-actions-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(120px, 160px));
+        justify-content: end;
+        gap: .5rem !important;
+    }
+
+    .officer-record-actions-grid .btn {
+        width: 100%;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .officer-records tbody tr.officer-record {
+        grid-template-areas:
+            "number"
+            "status"
+            "employees"
+            "travel"
+            "actions";
+        grid-template-columns: 1fr;
+    }
+
+    .officer-record-status,
+    .officer-record-travel {
+        border-left: 0;
+    }
+
+    .officer-record-actions-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: stretch;
+    }
+}
+
+@media (max-width: 359.98px) {
+    .officer-record-actions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media print {
     body.document-preview-printing>*:not(.document-pdfjs-print-root) {
         display: none !important;

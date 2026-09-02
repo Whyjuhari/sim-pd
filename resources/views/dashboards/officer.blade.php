@@ -26,7 +26,7 @@
     </div>
 
     <div class="card">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center gap-2">
+        <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div>
                 <h2 class="section-title"><span class="section-title-icon"><i
                             class="bi bi-file-earmark-text-fill"></i></span> Daftar Surat Perintah Tugas</h2>
@@ -81,7 +81,7 @@
         </div>
 
         <div class="card-body table-responsive">
-            <table class="table table-hover align-middle table-actions-sticky">
+            <table class="table table-hover align-middle table-actions-sticky officer-records">
                 <thead>
                     <tr>
                         <th>No. SPT</th>
@@ -96,32 +96,39 @@
                         @php($travel = $group['travel'])
                         @php($previewId = 'officer-spt-preview-' . $travel->id)
                         @php($safeSptNumber = preg_replace('/[^A-Za-z0-9._-]+/', '_', $travel->no_spt) ?: 'SPT')
-                        <tr>
-                            <td class="fw-bold text-identity">{{ $travel->no_spt }}</td>
-                            <td>
-                                <ol class="mb-1 ps-3">
-                                    @foreach ($group['employees'] as $employee)
-                                        <li>{{ $employee->nama_lengkap }}</li>
-                                    @endforeach
-                                </ol>
-                                <small class="text-muted">{{ $group['employees']->count() }} pegawai dalam satu Surat
-                                    Tugas</small>
+                        <tr class="officer-record">
+                            <td class="officer-record-number fw-bold text-identity">
+                                <div class="officer-record-value">{{ $travel->no_spt }}</div>
                             </td>
-                            <td>
-                                <div class="fw-semibold"><i class="bi bi-geo-alt-fill text-danger"></i>
-                                    {{ $travel->kota_tujuan }}</div><small
-                                    class="text-muted">{{ $travel->tgl_berangkat->format('d/m/Y') }}–{{ $travel->tgl_kembali->format('d/m/Y') }}
-                                    · {{ $travel->lama_hari }} hari</small>
+                            <td class="officer-record-employees">
+                                <div class="officer-record-value">
+                                    <ol class="mb-1 ps-3">
+                                        @foreach ($group['employees'] as $employee)
+                                            <li>{{ $employee->nama_lengkap }}</li>
+                                        @endforeach
+                                    </ol>
+                                    <small class="text-muted">{{ $group['employees']->count() }} pegawai dalam satu Surat
+                                        Tugas</small>
+                                </div>
                             </td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-1">
+                            <td class="officer-record-travel">
+                                <div class="officer-record-value">
+                                    <div class="fw-semibold"><i class="bi bi-geo-alt-fill text-danger"></i>
+                                        {{ $travel->kota_tujuan }}</div>
+                                    <small
+                                        class="text-muted">{{ $travel->tgl_berangkat->format('d/m/Y') }}–{{ $travel->tgl_kembali->format('d/m/Y') }}
+                                        · {{ $travel->lama_hari }} hari</small>
+                                </div>
+                            </td>
+                            <td class="officer-record-status">
+                                <div class="officer-record-value d-flex flex-wrap gap-1">
                                     @foreach ($group['travels'] as $memberTravel)
                                         <x-ui.status-pill :status="$memberTravel->status" />
                                     @endforeach
                                 </div>
                             </td>
-                            <td>
-                                <div class="d-flex flex-wrap align-items-center gap-2"><a
+                            <td class="officer-record-actions">
+                                <div class="officer-record-value officer-record-actions-grid d-flex flex-wrap align-items-center gap-2"><a
                                         href="{{ route('travel-orders.show', ['sptGroupId' => $travel->spt_group_id]) }}"
                                         class="d-flex justify-content-center align-items-center btn btn-sm btn-outline-primary"><i
                                             class="bi bi-eye me-1"></i> Detail</a><button type="button"

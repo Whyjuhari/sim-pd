@@ -44,7 +44,7 @@
                     <img src="{{ auth()->user()->photoUrl() }}" class="app-user-avatar"
                         alt="Foto {{ auth()->user()->nama_lengkap }}">
                     <span
-                        class="app-user-copy d-none d-md-flex"><strong>{{ auth()->user()->nama_lengkap }}</strong><small>{{ $roleLabel }}</small></span>
+                        class="app-user-copy d-none d-sm-flex"><strong>{{ auth()->user()->nama_lengkap }}</strong><small>{{ $roleLabel }}</small></span>
                 </a>
                 <form method="POST" action="{{ route('logout') }}" class="m-0">
                     @csrf
