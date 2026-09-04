@@ -11,8 +11,7 @@
     <div class="alert alert-info small">
         <i class="bi bi-info-circle"></i>
         Template yang dipilih pada saat SPT dibuat akan <strong>terkunci</strong> dan digunakan
-        untuk mencetak SPT tersebut, jadi mengunggah atau menonaktifkan template baru tidak
-        akan mengubah SPT yang sudah dibuat sebelumnya.
+        untuk mencetak SPT tersebut.
     </div>
 
     <div class="row g-3 mb-4 mt-1">
@@ -81,15 +80,19 @@
                                                 style="width: 84px; height: 112px;">
                                                 <div class="spt-thumb-wrap" style="padding: 6px;">
                                                     @if ($template->existsThumbnail())
-                                                        <canvas data-spt-template-thumb="{{ route('spt-templates.thumbnail', $template) }}"
+                                                        <canvas
+                                                            data-spt-template-thumb="{{ route('spt-templates.thumbnail', $template) }}"
                                                             aria-label="Pratinjau {{ $template->nama }}"></canvas>
                                                         <div class="spt-thumb-fallback d-none"
                                                             style="inset: 6px; padding: .25rem;">
-                                                            <i class="bi bi-file-earmark-text" style="font-size: 1.5rem;"></i>
+                                                            <i class="bi bi-file-earmark-text"
+                                                                style="font-size: 1.5rem;"></i>
                                                         </div>
                                                     @else
-                                                        <div class="spt-thumb-fallback" style="inset: 6px; padding: .25rem;">
-                                                            <i class="bi bi-file-earmark-text" style="font-size: 1.5rem;"></i>
+                                                        <div class="spt-thumb-fallback"
+                                                            style="inset: 6px; padding: .25rem;">
+                                                            <i class="bi bi-file-earmark-text"
+                                                                style="font-size: 1.5rem;"></i>
                                                             <small>Belum ada pratinjau</small>
                                                         </div>
                                                     @endif
@@ -97,7 +100,8 @@
                                             </div>
                                             <div>
                                                 <div class="fw-semibold">
-                                                    <i class="bi bi-file-earmark-word text-primary me-1"></i>{{ $template->nama }}
+                                                    <i
+                                                        class="bi bi-file-earmark-word text-primary me-1"></i>{{ $template->nama }}
                                                 </div>
                                                 @if ($template->deskripsi)
                                                     <small class="text-muted">{{ $template->deskripsi }}</small>
@@ -111,7 +115,8 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge {{ $template->is_active ? 'text-bg-success' : 'text-bg-secondary' }}">
+                                        <span
+                                            class="badge {{ $template->is_active ? 'text-bg-success' : 'text-bg-secondary' }}">
                                             {{ $template->is_active ? 'Aktif' : 'Nonaktif' }}
                                         </span>
                                         @if ($template->is_default)
@@ -122,8 +127,9 @@
                                     <td>{{ $template->perjalanan_dinas_count ?? $template->usageCount() }} SPT</td>
                                     <td>
                                         <div class="d-flex flex-wrap gap-1">
-                                            @if (! $template->is_default && $template->is_active)
-                                                <form action="{{ route('spt-templates.default', $template) }}" method="post">
+                                            @if (!$template->is_default && $template->is_active)
+                                                <form action="{{ route('spt-templates.default', $template) }}"
+                                                    method="post">
                                                     @csrf
                                                     @method('PUT')
                                                     <button type="submit" class="btn btn-sm btn-outline-primary"

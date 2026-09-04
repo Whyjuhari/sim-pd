@@ -6,6 +6,7 @@
     border: 1px solid #dee2e6;
     border-radius: 0.375rem;
     overflow: hidden;
+    margin: 12px;
 }
 
 .spt-thumb-frame.is-paper::before {

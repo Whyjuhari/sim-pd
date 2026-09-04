@@ -12,9 +12,6 @@
                         <a href="{{ route('dashboard.officer') }}" class="btn btn-outline-secondary btn-sm"><i
                                 class="bi bi-arrow-left me-1"></i>Kembali</a>
                     </div>
-                    <p class="text-muted mb-4">Template menentukan tampilan kop dan layout saat mencetak Surat Perintah
-                        Tugas. Pilih salah satu untuk melanjutkan pengisian data.</p>
-
                     <div class="row g-4">
                         @forelse ($templates as $template)
                             <div class="col-sm-6 col-lg-4 col-xxl-3">
@@ -24,7 +21,8 @@
                                         <div class="spt-thumb-frame is-paper">
                                             <div class="spt-thumb-wrap">
                                                 @if ($template->existsThumbnail())
-                                                    <canvas data-spt-template-thumb="{{ route('spt-templates.thumbnail', $template) }}"
+                                                    <canvas
+                                                        data-spt-template-thumb="{{ route('spt-templates.thumbnail', $template) }}"
                                                         aria-label="Pratinjau {{ $template->nama }}"></canvas>
                                                     <div class="spt-thumb-fallback d-none">
                                                         <i class="bi bi-file-earmark-text"></i>
@@ -65,8 +63,8 @@
                         @empty
                             <div class="col-12">
                                 <div class="alert alert-warning mb-3">
-                                    Belum ada template yang diunggah. Anda dapat membuat SPT dengan template sistem bawaan,
-                                    atau unggah template terlebih dahulu.
+                                    Belum ada template yang diunggah. Buat SPT dengan template sistem bawaan,
+                                    atau unggah template.
                                 </div>
                             </div>
                         @endforelse
@@ -75,7 +73,7 @@
                             <a href="{{ route('travel-orders.create', ['template' => 'system']) }}"
                                 class="text-decoration-none template-choice h-100 d-block">
                                 <div class="card h-100 border shadow-sm">
-                                    <div class="spt-thumb-frame">
+                                    <div class="spt-thumb-frame ml-2">
                                         <div class="spt-thumb-fallback">
                                             <i class="bi bi-file-earmark-fill"></i>
                                             <small>Layout bawaan aplikasi</small>
