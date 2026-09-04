@@ -115,6 +115,11 @@ class PerjalananDinas extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function sptTemplate(): BelongsTo
+    {
+        return $this->belongsTo(SptTemplate::class, 'spt_template_id');
+    }
+
     public function laporan(): HasOne
     {
         return $this->hasOne(

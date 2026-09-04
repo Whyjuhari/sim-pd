@@ -3,15 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\PerjalananDinas;
+use App\Services\Documents\DocumentCachePrewarmer;
+use App\Services\Documents\TravelPdfDocumentService;
 use App\Services\Uploads\ReportDocumentationImageStorage;
+use App\Support\TravelReportValidation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
 
 class TravelReportController extends Controller
 {
+    public function __construct(private readonly DocumentCachePrewarmer $documentPrewarmer) {}
 
     public function edit(
         Request $request,
@@ -29,6 +34,15 @@ class TravelReportController extends Controller
             );
         }
 
+        if (! $travel->pegawai?->signatureAbsolutePath()) {
+            return redirect()
+                ->route('dashboard.user')
+                ->with(
+                    'warning',
+                    'Laporan belum dapat diisi karena tanda tangan Anda belum tersedia. Silakan hubungi Admin.'
+                );
+        }
+
         return view(
             'travel.reports',
             [
@@ -36,6 +50,63 @@ class TravelReportController extends Controller
                 'report' => $travel->laporan,
             ]
         );
+    }
+
+    public function preview(
+        Request $request,
+        PerjalananDinas $travel,
+        TravelPdfDocumentService $documents
+    ): BinaryFileResponse {
+        $travel = $this->ownedReadyTravel($request, $travel);
+
+        abort_if(
+            $travel->laporan,
+            422,
+            'Laporan perjalanan sudah tersimpan dan tidak dapat dipratinjau sebagai laporan baru.'
+        );
+        $this->ensureSignatureAvailable($travel);
+
+        $data = $request->validate(
+            TravelReportValidation::rules(),
+            TravelReportValidation::messages()
+        );
+        $photoPaths = array_values(array_filter(array_map(
+            static fn ($photo): string|false => $photo->getRealPath(),
+            $data['foto_dokumentasi']
+        )));
+
+        try {
+            $pdfPath = $documents->previewLaporanPerjadin(
+                $travel,
+                $data,
+                $photoPaths
+            );
+        } catch (Throwable $exception) {
+            report($exception);
+
+            abort(
+                500,
+                'Pratinjau laporan belum dapat dibuat. Silakan coba kembali atau hubungi administrator.'
+            );
+        }
+
+        $safeNumber = preg_replace('/[^A-Za-z0-9._-]+/', '_', $travel->no_spt)
+            ?: 'Laporan';
+        $safeName = preg_replace(
+            '/[^A-Za-z0-9._-]+/',
+            '_',
+            (string) $travel->pegawai->nama_lengkap
+        ) ?: 'Pegawai';
+
+        return response()
+            ->file($pdfPath, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="Pratinjau_Laporan_'.$safeNumber.'_'.$safeName.'.pdf"',
+                'Cache-Control' => 'no-store, private, max-age=0',
+                'Pragma' => 'no-cache',
+                'X-Content-Type-Options' => 'nosniff',
+            ])
+            ->deleteFileAfterSend(true);
     }
 
     public function update(
@@ -55,77 +126,11 @@ class TravelReportController extends Controller
                 'Laporan perjalanan sudah tersimpan dan tidak dapat diubah. Silakan lanjutkan pengisian realisasi biaya.'
             );
         }
-
-        $documentation = config(
-            'sim_pd.documents.report_documentation'
-        );
-        $maxFiles = max(
-            1,
-            min(2, (int) ($documentation['max_files'] ?? 2))
-        );
-        $maxKilobytes = max(
-            1,
-            (int) ($documentation['max_kilobytes_per_file'] ?? 5120)
-        );
-        $minDimension = max(
-            1,
-            (int) ($documentation['min_dimension'] ?? 600)
-        );
-        $maxDimension = max(
-            $minDimension,
-            (int) ($documentation['max_dimension'] ?? 6000)
-        );
+        $this->ensureSignatureAvailable($travel);
 
         $data = $request->validate(
-            [
-                'hasil_pelaksanaan' => [
-                    'required',
-                    'string',
-                    'max:20000',
-                ],
-
-                'kesimpulan' => [
-                    'required',
-                    'string',
-                    'max:10000',
-                ],
-
-                'foto_dokumentasi' => [
-                    'required',
-                    'array',
-                    'min:1',
-                    'max:' . $maxFiles,
-                ],
-
-                'foto_dokumentasi.*' => [
-                    'required',
-                    'file',
-                    'image',
-                    'mimes:jpg,jpeg,png',
-                    'mimetypes:image/jpeg,image/png',
-                    'max:' . $maxKilobytes,
-                    'dimensions:min_width=' . $minDimension
-                        . ',min_height=' . $minDimension
-                        . ',max_width=' . $maxDimension
-                        . ',max_height=' . $maxDimension,
-                ],
-            ],
-            [
-                'foto_dokumentasi.required' =>
-                'Minimal satu foto dokumentasi wajib diunggah.',
-                'foto_dokumentasi.max' =>
-                'Maksimal dua foto dokumentasi dapat diunggah.',
-                'foto_dokumentasi.*.image' =>
-                'Dokumentasi wajib berupa gambar yang valid.',
-                'foto_dokumentasi.*.mimes' =>
-                'Format dokumentasi hanya boleh JPG, JPEG, atau PNG.',
-                'foto_dokumentasi.*.mimetypes' =>
-                'Tipe file dokumentasi tidak valid.',
-                'foto_dokumentasi.*.max' =>
-                'Ukuran setiap foto dokumentasi maksimal 5 MB.',
-                'foto_dokumentasi.*.dimensions' =>
-                'Dimensi foto dokumentasi harus antara 600 × 600 dan 6000 × 6000 piksel.',
-            ]
+            TravelReportValidation::rules(),
+            TravelReportValidation::messages()
         );
 
         $storedPaths = [];
@@ -192,6 +197,11 @@ class TravelReportController extends Controller
             );
         }
 
+        $this->documentPrewarmer->afterResponse(
+            TravelPdfDocumentService::TYPE_REPORT,
+            (int) $travel->id
+        );
+
         return redirect()
             ->route(
                 'realizations.show',
@@ -217,6 +227,15 @@ class TravelReportController extends Controller
                 ]
             )
             ->with('success', $message);
+    }
+
+    private function ensureSignatureAvailable(PerjalananDinas $travel): void
+    {
+        abort_if(
+            ! $travel->pegawai?->signatureAbsolutePath(),
+            422,
+            'Laporan belum dapat dipratinjau atau disimpan karena tanda tangan Anda belum tersedia. Silakan hubungi Admin.'
+        );
     }
 
     private function ownedReadyTravel(

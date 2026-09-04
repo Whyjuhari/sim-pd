@@ -7,10 +7,19 @@
 @section('content')
 
     @php
-        $selectedEmployeeIds = old(
+        $selectedEmployeeIds = collect(old(
             'user_ids',
-            $travels->pluck('user_id')->map(fn($id) => (string) $id)->values()->all(),
-        );
+            $travels->pluck('user_id')->map(fn ($id) => (string) $id)->values()->all(),
+        ))
+            ->filter(fn ($id) => (string) $id !== '')
+            ->map(fn ($id) => (string) $id)
+            ->unique()
+            ->values();
+        $employeesById = $employees->keyBy(fn ($employee) => (string) $employee->id);
+        $employeeOptions = $selectedEmployeeIds
+            ->map(fn ($id) => $employeesById->get($id))
+            ->filter()
+            ->concat($employees->reject(fn ($employee) => $selectedEmployeeIds->contains((string) $employee->id)));
     @endphp
 
     <div class="row justify-content-center">
@@ -104,6 +113,24 @@
                             <input type="text" name="menimbang"
                                 value="{{ old('menimbang', $travel->menimbang) }}"
                                 class="form-control" required>
+
+                        </div>
+
+
+                        <div class="mb-3">
+
+                            <label class="form-label fw-bold">
+                                Template SPT
+                            </label>
+
+                            @php
+                                $lockedTemplate = $sptTemplates->firstWhere('id', $travel->spt_template_id);
+                            @endphp
+                            <input type="text" class="form-control bg-light" readonly
+                                value="{{ $lockedTemplate?->nama ?? 'Template sistem (legacy)' }}">
+                            <div class="form-text">
+                                Template dikunci saat SPT dibuat dan tidak dapat diubah.
+                            </div>
 
                         </div>
 
@@ -203,53 +230,35 @@
                         </div>
 
 
-                        <div id="employee-container">
+                        <div class="mb-4 spt-searchable-field">
+                            <label id="employeeSelectLabel" for="employeeSelect" class="form-label fw-bold">
+                                Pegawai
+                            </label>
 
-                            @foreach ($selectedEmployeeIds as $selectedId)
-                                <div class="row mb-2 employee-row">
+                            <select id="employeeSelect" name="user_ids[]" class="form-select" multiple required
+                                data-spt-searchable="employees" data-placeholder="Cari dan pilih pegawai">
+                                @foreach ($employeeOptions as $employee)
+                                    @php
+                                        $employeeDescription = collect([
+                                            $employee->nip ? 'NIP. '.$employee->nip : null,
+                                            $employee->jabatan,
+                                        ])->filter()->implode(' · ');
+                                    @endphp
+                                    <option value="{{ $employee->id }}" @selected($selectedEmployeeIds->contains((string) $employee->id))
+                                        data-label-description="{{ $employeeDescription }}"
+                                        data-custom-properties="{{ json_encode([
+                                            'nip' => (string) ($employee->nip ?? ''),
+                                            'position' => (string) ($employee->jabatan ?? ''),
+                                        ], JSON_UNESCAPED_UNICODE) }}">
+                                        {{ $employee->nama_lengkap }}
+                                    </option>
+                                @endforeach
+                            </select>
 
-                                    <div class="col-10">
-
-                                        <select name="user_ids[]" class="form-select" required>
-
-                                            <option value="">
-                                                -- Pilih Pegawai --
-                                            </option>
-
-                                            @foreach ($employees as $employee)
-                                                <option value="{{ $employee->id }}" @selected((string) $selectedId === (string) $employee->id)>
-                                                    {{ $employee->nama_lengkap }}
-
-                                                    @if ($employee->nip)
-                                                        -
-                                                        {{ $employee->nip }}
-                                                    @endif
-                                                </option>
-                                            @endforeach
-
-                                        </select>
-
-                                    </div>
-
-
-                                    <div class="col-2">
-
-                                        <button type="button" class="btn btn-danger w-100 remove-employee">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-
-                                    </div>
-
-                                </div>
-                            @endforeach
-
+                            @error('user_ids')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
                         </div>
-
-
-                        <button type="button" id="add-employee" class="btn btn-sm btn-success mb-4">
-                            <i class="bi bi-plus-circle"></i>
-                            Tambah Pegawai Lain
-                        </button>
 
 
                         {{-- ========================================== --}}
@@ -263,20 +272,26 @@
 
                         <div class="row">
 
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6 mb-3 spt-searchable-field">
 
-                                <label class="fw-bold">
+                                <label id="destinationSelectLabel" for="destinationSelect" class="fw-bold mb-2">
                                     Kota Tujuan
                                 </label>
 
-                                <select id="destinationSelect" name="kota_tujuan" class="form-select" required>
+                                <select id="destinationSelect" name="kota_tujuan" class="form-select" required
+                                    data-spt-searchable="destination" data-placeholder="Cari kota tujuan">
 
-                                    <option value="">
+                                    <option value="" placeholder>
                                         -- Pilih Kota --
                                     </option>
 
                                     @foreach ($destinations as $destination)
-                                        <option value="{{ $destination->kota_tujuan }}" @selected(old('kota_tujuan', $travel->kota_tujuan) === $destination->kota_tujuan)>
+                                        @php($provinceName = $destination->province?->name ?? '')
+                                        <option value="{{ $destination->kota_tujuan }}" @selected(old('kota_tujuan', $travel->kota_tujuan) === $destination->kota_tujuan)
+                                            data-label-description="{{ $provinceName }}"
+                                            data-custom-properties="{{ json_encode([
+                                                'province' => $provinceName,
+                                            ], JSON_UNESCAPED_UNICODE) }}">
                                             {{ $destination->kota_tujuan }}
                                         </option>
                                     @endforeach
@@ -421,96 +436,6 @@
 
 @push('scripts')
     <script>
-        const container =
-            document.getElementById(
-                'employee-container'
-            );
-
-        const addEmployeeButton =
-            document.getElementById(
-                'add-employee'
-            );
-
-
-        function refreshRemoveButtons() {
-
-            const rows =
-                container.querySelectorAll(
-                    '.employee-row'
-                );
-
-            rows.forEach(row => {
-
-                const button =
-                    row.querySelector(
-                        '.remove-employee'
-                    );
-
-                /*
-                 * Minimal harus ada satu pegawai.
-                 */
-                button.disabled =
-                    rows.length === 1;
-            });
-        }
-
-
-        addEmployeeButton.addEventListener(
-            'click',
-            () => {
-
-                const sourceRow =
-                    container.querySelector(
-                        '.employee-row'
-                    );
-
-                const newRow =
-                    sourceRow.cloneNode(true);
-
-                newRow.querySelector(
-                    'select'
-                ).value = '';
-
-                container.appendChild(
-                    newRow
-                );
-
-                refreshRemoveButtons();
-            }
-        );
-
-
-        container.addEventListener(
-            'click',
-            event => {
-
-                const button =
-                    event.target.closest(
-                        '.remove-employee'
-                    );
-
-                if (!button) {
-                    return;
-                }
-
-                const rows =
-                    container.querySelectorAll(
-                        '.employee-row'
-                    );
-
-                if (rows.length <= 1) {
-                    return;
-                }
-
-                button
-                    .closest('.employee-row')
-                    .remove();
-
-                refreshRemoveButtons();
-            }
-        );
-
-
         function calculateDays() {
 
             const start =
@@ -586,8 +511,6 @@
                 calculateDays
             );
 
-
-        refreshRemoveButtons();
         calculateDays();
 
     </script>

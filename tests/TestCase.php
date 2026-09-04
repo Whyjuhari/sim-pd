@@ -6,9 +6,29 @@ use App\Models\PerjalananDinas;
 use App\Models\RealisasiRincian;
 use App\Services\RealizationDetailService;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\File;
 
 abstract class TestCase extends BaseTestCase
 {
+    private string $documentCacheTestDirectory;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->documentCacheTestDirectory = storage_path(
+            'framework/testing/document-cache-'.bin2hex(random_bytes(5))
+        );
+        config()->set('sim_pd.documents.cache.directory', $this->documentCacheTestDirectory);
+    }
+
+    protected function tearDown(): void
+    {
+        File::deleteDirectory($this->documentCacheTestDirectory);
+
+        parent::tearDown();
+    }
+
     protected function realizationPayload(
         PerjalananDinas $travel,
         float $hotel,

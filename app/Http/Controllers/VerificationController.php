@@ -8,6 +8,8 @@ use App\Services\RealizationDetailService;
 use App\Services\TravelCostCalculator;
 use App\Services\TravelStatusTransition;
 use App\Services\Reports\PmkComplianceService;
+use App\Services\Documents\DocumentCachePrewarmer;
+use App\Services\Documents\TravelPdfDocumentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +23,8 @@ class VerificationController extends Controller
         private readonly TravelCostCalculator $calculator,
         private readonly TravelStatusTransition $transition,
         private readonly RealizationDetailService $details,
-        private readonly PmkComplianceService $compliance
+        private readonly PmkComplianceService $compliance,
+        private readonly DocumentCachePrewarmer $documentPrewarmer
     ) {}
 
     public function show(Request $request): View
@@ -54,7 +57,9 @@ class VerificationController extends Controller
             'catatan' => [Rule::requiredIf($action === 'reject'), 'nullable', 'string', 'max:5000'],
         ]);
 
-        DB::transaction(function () use ($request, $data, $action): void {
+        $approvedTravelId = null;
+
+        DB::transaction(function () use ($request, $data, $action, &$approvedTravelId): void {
             $travel = PerjalananDinas::query()
                 ->with('rincianRealisasi')
                 ->whereKey((int) $data['id'])
@@ -139,7 +144,16 @@ class VerificationController extends Controller
                 ],
                 $data['catatan'] ?? 'Realisasi disetujui.'
             );
+
+            $approvedTravelId = (int) $travel->id;
         });
+
+        if ($approvedTravelId) {
+            $this->documentPrewarmer->afterResponse(
+                TravelPdfDocumentService::TYPE_TRAVEL,
+                $approvedTravelId
+            );
+        }
 
         return redirect()
             ->route('dashboard.verifier')

@@ -9,6 +9,14 @@ return [
         ],
         'temporary_dir' => storage_path('app/private/documents/temporary'),
         'pdf_dir' => storage_path('app/private/documents/pdf'),
+        'cache' => [
+            'directory' => storage_path('app/private/documents/generated'),
+            'version' => env('SIMPD_DOCUMENT_CACHE_VERSION', '1'),
+            'prewarm_after_response' => filter_var(
+                env('SIMPD_DOCUMENT_PREWARM', true),
+                FILTER_VALIDATE_BOOL
+            ),
+        ],
         'php_cli_binary' => env('PHP_CLI_BINARY', 'php'),
         'tingkat_perjadin' => env('SIMPD_TRAVEL_LEVEL', 'C'),
         'libreoffice' => [

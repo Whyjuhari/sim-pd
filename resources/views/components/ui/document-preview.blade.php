@@ -1,8 +1,13 @@
-@props(['id', 'documentNumber'])
+@props(['id', 'documentNumber', 'standalone' => false])
 
-<tr id="{{ $id }}" class="document-preview-row d-none" data-document-preview
-    data-document-number="{{ $documentNumber }}">
-    <td colspan="5" class="responsive-records-empty">
+@if ($standalone)
+    <div id="{{ $id }}" {{ $attributes->merge(['class' => 'document-preview-standalone d-none']) }} data-document-preview
+        data-document-number="{{ $documentNumber }}">
+@else
+    <tr id="{{ $id }}" class="document-preview-row d-none" data-document-preview
+        data-document-number="{{ $documentNumber }}">
+        <td colspan="5" class="responsive-records-empty">
+@endif
         <section class="document-preview-panel" aria-label="Pratinjau dokumen {{ $documentNumber }}">
             <div class="document-preview-toolbar">
                 <div class="document-preview-heading">
@@ -105,6 +110,16 @@
                     <strong>Buka layar penuh</strong> atau <strong>Unduh PDF</strong>.
                 </p>
             </div>
+
+            @isset($footer)
+                <div class="document-preview-footer d-none" data-document-preview-footer>
+                    {{ $footer }}
+                </div>
+            @endisset
         </section>
+@if ($standalone)
+    </div>
+@else
     </td>
 </tr>
+@endif

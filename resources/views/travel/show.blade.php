@@ -92,6 +92,25 @@
 
         <div class="card-header bg-white py-3">
             <h6 class="mb-0 fw-bold text-identity">
+                <i class="bi bi-file-earmark-text"></i>
+                Template SPT
+            </h6>
+        </div>
+
+        <div class="card-body">
+            <div class="text-muted small">
+                Template yang digunakan untuk mencetak surat ini
+            </div>
+
+            <div class="fw-semibold">
+                {{ $travel->sptTemplate?->nama ?? 'Template sistem (legacy)' }}
+            </div>
+        </div>
+    </div>
+    <div class="card shadow-sm mb-4">
+
+        <div class="card-header bg-white py-3">
+            <h6 class="mb-0 fw-bold text-identity">
                 <i class="bi bi-geo-alt"></i>
                 Detail Perjalanan
             </h6>
@@ -308,17 +327,6 @@
             Kembali
         </a>
 
-
-        <a target="_blank"
-            href="{{ route('documents.surat-tugas', [
-                'id' => $travel->id,
-            ]) }}"
-            class="btn btn-primary">
-            <i class="bi bi-printer"></i>
-            Cetak Surat Tugas
-        </a>
-
-
         @if ($canModify)
             {{-- EDIT --}}
             <a href="{{ route('travel-orders.edit', [
@@ -335,12 +343,9 @@
                 action="{{ route('travel-orders.destroy', [
                     'sptGroupId' => $travel->spt_group_id,
                 ]) }}"
-                method="POST" class="d-inline"
-                data-sim-confirm
-                data-sim-confirm-title="Hapus SPT kolektif?"
+                method="POST" class="d-inline" data-sim-confirm data-sim-confirm-title="Hapus SPT kolektif?"
                 data-sim-confirm-text="Semua data pegawai yang tergabung dalam SPT ini akan dihapus. Tindakan ini tidak dapat dibatalkan."
-                data-sim-confirm-button="Ya, hapus SPT"
-                data-sim-confirm-tone="danger">
+                data-sim-confirm-button="Ya, hapus SPT" data-sim-confirm-tone="danger">
 
                 @csrf
                 @method('DELETE')

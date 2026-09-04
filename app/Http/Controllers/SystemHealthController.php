@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Throwable;
 
@@ -12,6 +13,7 @@ class SystemHealthController extends Controller
     {
         $database = $this->databaseIsAvailable();
         $storageRoot = storage_path('app/private');
+        $sptTemplateStorage = Storage::disk('local')->path('spt-templates');
         $templates = collect(config('sim_pd.documents.templates', []));
         $libreOffice = (string) config('sim_pd.documents.libreoffice.binary');
 
@@ -21,6 +23,11 @@ class SystemHealthController extends Controller
                 'label' => 'Penyimpanan privat',
                 'ok' => is_dir($storageRoot) && is_writable($storageRoot),
                 'message' => is_dir($storageRoot) && is_writable($storageRoot) ? 'Dapat ditulis' : 'Tidak dapat ditulis',
+            ],
+            [
+                'label' => 'Penyimpanan template SPT',
+                'ok' => is_dir($sptTemplateStorage) && is_writable($sptTemplateStorage),
+                'message' => is_dir($sptTemplateStorage) && is_writable($sptTemplateStorage) ? 'Dapat ditulis' : 'Tidak dapat ditulis atau folder belum tersedia',
             ],
             [
                 'label' => 'Template dokumen',

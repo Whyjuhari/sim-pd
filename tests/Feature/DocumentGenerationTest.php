@@ -7,6 +7,7 @@ use App\Models\PerjalananDinas;
 use App\Models\User;
 use App\Repositories\PerjalananDinasRepository;
 use App\Services\Documents\SuratTugasDocxGenerator;
+use App\Services\Documents\TravelPdfDocumentService;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -59,6 +60,26 @@ class DocumentGenerationTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_prepared_surat_tugas_is_served_without_running_libreoffice_again(): void
+    {
+        if (! is_file(config('sim_pd.documents.libreoffice.binary'))) {
+            $this->markTestSkipped('LibreOffice tidak tersedia.');
+        }
+
+        [$officer, , $travel] = $this->documentFixture();
+        app(TravelPdfDocumentService::class)->suratTugas($travel);
+
+        config()->set(
+            'sim_pd.documents.libreoffice.binary',
+            storage_path('framework/testing/libreoffice-should-not-run')
+        );
+
+        $this->actingAs($officer)
+            ->get(route('documents.surat-tugas', ['id' => $travel->id]))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
     }
 
     public function test_collective_surat_tugas_contains_every_employee_in_one_document(): void
@@ -135,7 +156,7 @@ class DocumentGenerationTest extends TestCase
         $xpath->registerNamespace('wp', 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing');
 
         $closingTables = $xpath->query(
-            '//w:tbl[.//w:t[contains(., "Demikian Surat Tugas ini dibuat")]]'
+            '/w:document/w:body/w:tbl[.//w:t[contains(., "Demikian Surat Tugas ini dibuat")]]'
         );
         $this->assertNotFalse($closingTables);
         $this->assertSame(1, $closingTables->length);
@@ -151,11 +172,22 @@ class DocumentGenerationTest extends TestCase
 
         $outerRows = $xpath->query('./w:tr', $closingTable);
         $this->assertNotFalse($outerRows);
-        $this->assertSame(2, $outerRows->length);
+        $this->assertSame(1, $outerRows->length);
 
         foreach ($outerRows as $row) {
             $this->assertSame(1, $xpath->query('./w:trPr/w:cantSplit', $row)->length);
         }
+
+        $closingLayoutTables = $xpath->query(
+            './w:tr/w:tc/w:tbl[.//w:t[contains(., "Demikian Surat Tugas ini dibuat")]]',
+            $closingTable,
+        );
+        $this->assertNotFalse($closingLayoutTables);
+        $this->assertSame(1, $closingLayoutTables->length);
+
+        $closingLayoutRows = $xpath->query('./w:tr', $closingLayoutTables->item(0));
+        $this->assertNotFalse($closingLayoutRows);
+        $this->assertSame(2, $closingLayoutRows->length);
 
         foreach (['Demikian Surat Tugas ini dibuat', 'Pangkep,', '${ttd}'] as $text) {
             $keptParagraphs = $xpath->query(
@@ -173,6 +205,46 @@ class DocumentGenerationTest extends TestCase
         $this->assertNotFalse($finalNameKeepNext);
         $this->assertSame(0, $finalNameKeepNext->length);
         $this->assertSame(0, $xpath->query('.//wp:anchor', $closingTable)->length);
+
+        $travelTables = $xpath->query(
+            './following-sibling::*[1][self::w:tbl[.//w:t[contains(., "Berangkat dari")]]]',
+            $closingTable,
+        );
+        $this->assertNotFalse($travelTables);
+        $this->assertSame(1, $travelTables->length);
+
+        $travelTable = $travelTables->item(0);
+        $this->assertNotNull($travelTable);
+
+        $travelRows = $xpath->query('./w:tr', $travelTable);
+        $this->assertNotFalse($travelRows);
+        $this->assertSame(8, $travelRows->length);
+
+        foreach ($travelRows as $row) {
+            $this->assertSame(1, $xpath->query('./w:trPr/w:cantSplit', $row)->length);
+        }
+
+        $travelParagraphs = $xpath->query('.//w:p', $travelTable);
+        $this->assertNotFalse($travelParagraphs);
+        $this->assertGreaterThan(1, $travelParagraphs->length);
+        $this->assertSame(
+            $travelParagraphs->length,
+            $xpath->query('.//w:p[w:pPr/w:keepLines]', $travelTable)->length,
+        );
+        $this->assertSame(
+            $travelParagraphs->length - 1,
+            $xpath->query(
+                './/w:p[w:pPr/w:keepNext[not(@w:val) or @w:val != "0"]]',
+                $travelTable,
+            )->length,
+        );
+
+        $lastTravelParagraph = $travelParagraphs->item($travelParagraphs->length - 1);
+        $this->assertNotNull($lastTravelParagraph);
+        $this->assertSame(
+            0,
+            $xpath->query('./w:pPr/w:keepNext', $lastTravelParagraph)->length,
+        );
     }
 
     private function documentFixture(): array

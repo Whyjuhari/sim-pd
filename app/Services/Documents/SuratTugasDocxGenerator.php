@@ -88,6 +88,7 @@ class SuratTugasDocxGenerator
     }
     private function formatUntukKegiatan(array $data): string
     {
+        $tempat_kegiatan = $data['kota_tujuan'] ?? '';
         $maksud = $data['maksud_perjalanan'] ?? '';
         $mulaiRaw = $data['tgl_berangkat'] ?? null;
         $selesaiRaw = $data['tgl_kembali'] ?? null;
@@ -101,7 +102,7 @@ class SuratTugasDocxGenerator
         $selesai = $selesaiRaw ? Carbon::parse($selesaiRaw) : null;
 
         if (! $selesai || $mulai->isSameDay($selesai)) {
-            return "{$maksud} pada tanggal {$this->formatDate($mulaiRaw)}, selama {$lama} hari";
+            return "{$maksud} di {$tempat_kegiatan} pada tanggal {$this->formatDate($mulaiRaw)}, selama {$lama} hari";
         }
 
         $tglSelesai = $this->formatDate($selesaiRaw);
@@ -112,6 +113,6 @@ class SuratTugasDocxGenerator
             default => $this->formatDate($mulaiRaw),
         };
 
-        return "{$maksud} dari tanggal {$tglMulai} - {$tglSelesai}, selama {$lama} hari";
+        return "{$maksud} di {$tempat_kegiatan} dari tanggal {$tglMulai} - {$tglSelesai}, selama {$lama} hari";
     }
 }

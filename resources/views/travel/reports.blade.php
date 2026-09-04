@@ -10,6 +10,16 @@
 
         <div class="col-lg-9">
 
+            <div class="workflow-steps mb-4 d-flex flex-sm-column" data-report-workflow aria-label="Tahap 2 dari 6">
+                <span class="done" data-workflow-step="1">1. SPT</span>
+                <span class="active" data-workflow-step="2">2. Laporan</span>
+                <span data-workflow-step="3">3. Pratinjau Laporan</span>
+                <span data-workflow-step="4">4. Realisasi</span>
+                <span data-workflow-step="5">5. Verifikasi</span>
+                <span data-workflow-step="6">6. Selesai</span>
+            </div>
+
+            <div data-report-form-section>
             <div class="card shadow-sm">
                 <div class="card-header bg-identity text-white py-3">
 
@@ -158,11 +168,11 @@
                         </div>
 
                     </div>
-                    <form
+                    <form id="travel-report-form-{{ $travel->id }}"
                         action="{{ route('travel-reports.update', [
                             'travel' => $travel->id,
                         ]) }}"
-                        method="POST" enctype="multipart/form-data">
+                        method="POST" enctype="multipart/form-data" data-report-preview-form>
 
                         @csrf
                         @method('PUT')
@@ -276,12 +286,14 @@
                             </a>
 
 
-                            <button type="submit" class="btn btn-identity" data-sim-confirm
-                                data-sim-confirm-title="Simpan laporan kegiatan?"
-                                data-sim-confirm-text="Laporan hanya dapat diisi satu kali. Setelah disimpan, Anda akan melanjutkan ke form realisasi dan isi laporan tidak dapat diubah."
-                                data-sim-confirm-button="Simpan &amp; lanjut" data-sim-confirm-tone="warning">
-                                <i class="bi bi-arrow-right-circle"></i>
-                                Simpan & Lanjut
+                            <button type="button" class="btn btn-identity" data-report-preview-trigger
+                                data-document-preview-trigger data-document-form="travel-report-form-{{ $travel->id }}"
+                                data-document-url="{{ route('travel-reports.preview', ['travel' => $travel->id]) }}"
+                                data-document-label="Laporan Perjalanan Dinas"
+                                data-document-filename="Pratinjau_Laporan_{{ $travel->id }}.pdf"
+                                aria-controls="report-document-preview-{{ $travel->id }}" aria-expanded="false">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                                Pratinjau Laporan
                             </button>
 
                         </div>
@@ -291,6 +303,30 @@
                 </div>
 
             </div>
+            </div>
+
+            <x-ui.document-preview
+                id="report-document-preview-{{ $travel->id }}"
+                :document-number="$travel->no_spt"
+                :standalone="true"
+                data-report-preview-section
+            >
+                <x-slot:footer>
+                    <div class="report-document-preview-confirmation p-3">
+                        <p class="mb-0 text-muted small">
+                            Pastikan isi laporan sudah benar. Laporan hanya dapat disimpan satu kali.
+                        </p>
+                        <div class="report-document-preview-actions d-flex justify-content-around mt-3">
+                            <button type="button" class="btn btn-outline-secondary" data-report-preview-review>
+                                <i class="bi bi-pencil-square"></i> Periksa Kembali
+                            </button>
+                            <button type="button" class="btn btn-identity" data-report-preview-confirm disabled>
+                                <i class="bi bi-check-circle"></i> Simpan &amp; Lanjut
+                            </button>
+                        </div>
+                    </div>
+                </x-slot:footer>
+            </x-ui.document-preview>
 
         </div>
 

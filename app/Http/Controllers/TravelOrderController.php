@@ -6,8 +6,11 @@ use App\Models\MasterTarif;
 use App\Models\BudgetAccount;
 use App\Models\DailyAllowanceRate;
 use App\Models\PerjalananDinas;
+use App\Models\SptTemplate;
 use App\Models\User;
 use App\Services\TravelCostCalculator;
+use App\Services\Documents\DocumentCachePrewarmer;
+use App\Services\Documents\TravelPdfDocumentService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
@@ -23,26 +26,73 @@ use DomainException;
 class TravelOrderController extends Controller
 {
     public function __construct(
-        private readonly TravelCostCalculator $calculator
+        private readonly TravelCostCalculator $calculator,
+        private readonly DocumentCachePrewarmer $documentPrewarmer
     ) {}
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('travel.create', [
+        $selectedTemplateId = $this->resolveSelectedTemplateId($request);
+
+        if ($selectedTemplateId === null) {
+            return view('travel.template-select', [
+                'templates' => SptTemplate::query()
+                    ->withCount('perjalananDinas')
+                    ->where('is_active', true)
+                    ->orderByDesc('is_default')
+                    ->orderBy('nama')
+                    ->get(),
+            ]);
+        }
+
+        return view('travel.create', $this->createFormData($selectedTemplateId));
+    }
+
+    private function resolveSelectedTemplateId(Request $request): ?int
+    {
+        $raw = trim((string) $request->query('template', ''));
+
+        if ($raw === '') {
+            return null;
+        }
+
+        if ($raw === 'system') {
+            return 0;
+        }
+
+        if (! ctype_digit($raw)) {
+            return null;
+        }
+
+        $exists = SptTemplate::query()
+            ->whereKey((int) $raw)
+            ->where('is_active', true)
+            ->exists();
+
+        return $exists ? (int) $raw : null;
+    }
+
+    /** @return array<string, mixed> */
+    private function createFormData(?int $selectedTemplateId): array
+    {
+        return [
+            'selectedTemplateId' => $selectedTemplateId,
             'employees' => User::query()
                 ->where('role', User::ROLE_USER)
                 ->orderBy('nama_lengkap')
-                ->get(),
+                ->get(['id', 'nama_lengkap', 'nip', 'jabatan']),
 
             'destinations' => MasterTarif::query()
+                ->with('province:id,name')
                 ->orderBy('kota_tujuan')
-                ->get(),
+                ->get(['id', 'kota_tujuan', 'province_id']),
 
             'budgetAccounts' => BudgetAccount::query()
                 ->where('is_active', true)
                 ->orderBy('code')
                 ->get(),
             'dailyAllowanceCategories' => DailyAllowanceRate::categoryLabels(),
-        ]);
+            'sptTemplates' => $this->selectableTemplates(),
+        ];
     }
 
     public function store(
@@ -97,6 +147,16 @@ class TravelOrderController extends Controller
                 }
             }
         );
+
+        $referenceId = PerjalananDinas::query()
+            ->where('spt_group_id', $sptGroupId)
+            ->min('id');
+        if ($referenceId) {
+            $this->documentPrewarmer->afterResponse(
+                TravelPdfDocumentService::TYPE_SPT,
+                (int) $referenceId
+            );
+        }
 
         return redirect()
             ->route('dashboard.officer')
@@ -214,14 +274,15 @@ class TravelOrderController extends Controller
                     ->orderBy(
                         'nama_lengkap'
                     )
-                    ->get(),
+                    ->get(['id', 'nama_lengkap', 'nip', 'jabatan']),
 
                 'destinations'
                 => MasterTarif::query()
+                    ->with('province:id,name')
                     ->orderBy(
                         'kota_tujuan'
                     )
-                    ->get(),
+                    ->get(['id', 'kota_tujuan', 'province_id']),
 
                 'budgetAccounts'
                 => BudgetAccount::query()
@@ -232,6 +293,9 @@ class TravelOrderController extends Controller
 
                 'dailyAllowanceCategories'
                 => DailyAllowanceRate::categoryLabels(),
+
+                'sptTemplates'
+                => $this->selectableTemplates(),
             ]
         );
     }
@@ -464,6 +528,16 @@ class TravelOrderController extends Controller
             }
         );
 
+        $referenceId = PerjalananDinas::query()
+            ->where('spt_group_id', $sptGroupId)
+            ->min('id');
+        if ($referenceId) {
+            $this->documentPrewarmer->afterResponse(
+                TravelPdfDocumentService::TYPE_SPT,
+                (int) $referenceId
+            );
+        }
+
         return redirect()
             ->route(
                 'travel-orders.show',
@@ -658,6 +732,14 @@ class TravelOrderController extends Controller
                 Rule::in(array_keys(DailyAllowanceRate::categoryLabels())),
             ],
 
+            'spt_template_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('spt_templates', 'id')->where(
+                    fn($query) => $query->where('is_active', true)
+                ),
+            ],
+
             'akun_anggaran' => [
                 'required',
                 'string',
@@ -845,6 +927,11 @@ class TravelOrderController extends Controller
         array $rates
     ): array {
         return [
+            'spt_template_id'
+            => isset($data['spt_template_id']) && $data['spt_template_id'] !== ''
+                ? (int) $data['spt_template_id']
+                : null,
+
             'no_spt'
             => $data['no_spt'],
 
@@ -988,6 +1075,15 @@ class TravelOrderController extends Controller
      * HELPER: AMBIL SATU GRUP SPT
      * =====================================================
      */
+
+    private function selectableTemplates(): EloquentCollection
+    {
+        return SptTemplate::query()
+            ->where('is_active', true)
+            ->orderByDesc('is_default')
+            ->orderBy('nama')
+            ->get();
+    }
 
     private function groupTravels(
         string $sptGroupId

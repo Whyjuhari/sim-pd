@@ -57,11 +57,13 @@ class SweetAlertDialogTest extends TestCase
         ];
 
         $confirmationMarkup = implode("\n", array_map('file_get_contents', $viewFiles));
-        $dialogSources = $confirmationMarkup."\n".file_get_contents(resource_path('js/app.js'));
+        $dialogSources = $confirmationMarkup
+            ."\n".file_get_contents(resource_path('js/app.js'))
+            ."\n".file_get_contents(resource_path('js/report-preview.js'));
 
         preg_match_all('/\bdata-sim-confirm(?=\s|>)/', $confirmationMarkup, $confirmationAttributes);
 
-        $this->assertCount(14, $confirmationAttributes[0]);
+        $this->assertCount(13, $confirmationAttributes[0]);
         $this->assertStringContainsString('data-realization-preview', $confirmationMarkup);
         $this->assertStringContainsString("Swal.fire", $confirmationMarkup);
         $this->assertStringContainsString('data-existing-evidence', $confirmationMarkup);
@@ -71,6 +73,30 @@ class SweetAlertDialogTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/\b(?:confirm|alert|prompt)\s*\(/i', $dialogSources);
         $this->assertStringContainsString('event.submitter', $dialogSources);
         $this->assertStringContainsString('form.requestSubmit(submitter)', $dialogSources);
+    }
+
+    public function test_report_uses_a_safe_bootstrap_preview_before_submission(): void
+    {
+        $reportView = file_get_contents(resource_path('views/travel/reports.blade.php'));
+        $previewSource = file_get_contents(resource_path('js/report-preview.js'));
+
+        $this->assertStringContainsString('data-report-preview-form', $reportView);
+        $this->assertStringContainsString('data-report-form-section', $reportView);
+        $this->assertStringContainsString('data-report-preview-section', $reportView);
+        $this->assertStringContainsString('data-report-preview-trigger', $reportView);
+        $this->assertStringContainsString('data-document-preview-trigger', $reportView);
+        $this->assertStringContainsString('data-report-preview-review', $reportView);
+        $this->assertStringContainsString('data-report-preview-confirm', $reportView);
+        $this->assertStringNotContainsString('data-report-preview-modal="report-preview-modal"', $reportView);
+        $this->assertStringNotContainsString('data-sim-confirm-title="Simpan laporan kegiatan?"', $reportView);
+
+        $this->assertStringContainsString('showPreviewView', $previewSource);
+        $this->assertStringContainsString('showFormView', $previewSource);
+        $this->assertStringContainsString('data-report-form-section', $previewSource);
+        $this->assertStringContainsString('form.checkValidity()', $previewSource);
+        $this->assertStringContainsString('form.reportValidity()', $previewSource);
+        $this->assertStringContainsString('form.requestSubmit()', $previewSource);
+        $this->assertStringNotContainsString('Modal.getOrCreateInstance', $previewSource);
     }
 
     private function createTravel(User $employee, string $status): PerjalananDinas

@@ -10,9 +10,13 @@
 @section('content')
     <div class="row justify-content-center">
         <div class="col-xl-9">
-            <div class="workflow-steps mb-4" aria-label="Tahapan perjalanan dinas">
-                <span class="done">1. SPT</span><span class="done">2. Laporan</span>
-                <span class="active">3. Realisasi</span><span>4. Verifikasi</span><span>5. Selesai</span>
+            <div class="workflow-steps mb-4 d-flex flex-sm-column" aria-label="Tahapan perjalanan dinas">
+                <span class="done">1. SPT</span>
+                <span class="done">2. Laporan</span>
+                <span class="active">3. Petinjau Laporan</span>
+                <span class="active">4. Realisasi</span>
+                <span>5. Verifikasi</span>
+                <span>6. Selesai</span>
             </div>
 
             @if ($travel->status === \App\Models\PerjalananDinas::STATUS_REJECTED)
@@ -73,14 +77,16 @@
                                 <span class="badge text-bg-light border">Maks. 3 bukti per rincian</span>
                             </div>
                             <div class="card-body p-3 p-md-4 realization-items" id="{{ $category }}Items">
-                                @if($category === \App\Models\RealisasiRincian::CATEGORY_HOTEL)
+                                @if ($category === \App\Models\RealisasiRincian::CATEGORY_HOTEL)
                                     <div class="alert alert-light border mb-3">
                                         <div class="fw-semibold"><i class="bi bi-building-check me-1"></i>
-                                            Batas penginapan Rp {{ number_format($recommendation['hotel_limit'], 0, ',', '.') }}
+                                            Batas penginapan Rp
+                                            {{ number_format($recommendation['hotel_limit'], 0, ',', '.') }}
                                         </div>
                                         <div class="small text-muted">
-                                            Rp {{ number_format($recommendation['hotel_per_day'], 0, ',', '.') }} per malam × {{ $recommendation['hotel_nights'] }} malam
-                                            @if($recommendation['hotel_rate_source'] === 'pmk')
+                                            Rp {{ number_format($recommendation['hotel_per_day'], 0, ',', '.') }} per malam
+                                            × {{ $recommendation['hotel_nights'] }} malam
+                                            @if ($recommendation['hotel_rate_source'] === 'pmk')
                                                 · PMK 32/2025 Eselon IV/Golongan III/II/I
                                             @else
                                                 · Tarif legacy
@@ -88,28 +94,33 @@
                                         </div>
                                     </div>
                                 @endif
-                                @if(
-                                    $category === \App\Models\RealisasiRincian::CATEGORY_TRANSPORT
-                                    && ($recommendation['transport_rate_source'] ?? 'legacy') === 'pmk_ground'
-                                )
+                                @if (
+                                    $category === \App\Models\RealisasiRincian::CATEGORY_TRANSPORT &&
+                                        ($recommendation['transport_rate_source'] ?? 'legacy') === 'pmk_ground')
                                     <div class="alert alert-info border mb-3">
                                         <div class="fw-semibold"><i class="bi bi-signpost-split me-1"></i>
-                                            Patokan PMK pergi-pulang Rp {{ number_format($recommendation['transport_limit'], 0, ',', '.') }}
+                                            Patokan PMK pergi-pulang Rp
+                                            {{ number_format($recommendation['transport_limit'], 0, ',', '.') }}
                                         </div>
                                         <div class="small">
-                                            Rp {{ number_format($recommendation['ground_transport_one_way'], 0, ',', '.') }} per perjalanan satu arah ·
-                                            {{ $recommendation['ground_transport_origin'] }} ↔ {{ $recommendation['ground_transport_destination'] }}.
-                                            Tarif ini merupakan patokan yang dapat dilampaui dengan bukti, bukan batas pemotongan otomatis.
+                                            Rp
+                                            {{ number_format($recommendation['ground_transport_one_way'], 0, ',', '.') }}
+                                            per perjalanan satu arah ·
+                                            {{ $recommendation['ground_transport_origin'] }} ↔
+                                            {{ $recommendation['ground_transport_destination'] }}.
+                                            Tarif ini merupakan patokan yang dapat dilampaui dengan bukti, bukan batas
+                                            pemotongan otomatis.
                                         </div>
                                     </div>
                                 @endif
-                                @if(
-                                    $category === \App\Models\RealisasiRincian::CATEGORY_TRANSPORT
-                                    && ($recommendation['transport_rate_source'] ?? 'legacy') === 'pmk_air'
-                                )
+                                @if (
+                                    $category === \App\Models\RealisasiRincian::CATEGORY_TRANSPORT &&
+                                        ($recommendation['transport_rate_source'] ?? 'legacy') === 'pmk_air')
                                     <div class="alert alert-info border mb-3">
-                                        <div class="fw-semibold"><i class="bi bi-airplane me-1"></i> Patokan transportasi udara PMK</div>
-                                        <div class="small">Setiap komponen mempunyai patokan sendiri dan tidak dibagi rata. Nilai aktual dapat melampaui patokan dengan alasan dan bukti yang sesuai.</div>
+                                        <div class="fw-semibold"><i class="bi bi-airplane me-1"></i> Patokan transportasi
+                                            udara PMK</div>
+                                        <div class="small">Setiap komponen mempunyai patokan sendiri dan tidak dibagi rata.
+                                            Nilai aktual dapat melampaui patokan dengan alasan dan bukti yang sesuai.</div>
                                     </div>
                                 @endif
                                 @foreach ($categoryItems as $item)
@@ -118,7 +129,7 @@
                                     @php($isTerminalBenchmark = $isAirBenchmark && in_array($item['code'], [\App\Models\RealisasiRincian::CODE_LOCAL_DEPARTURE, \App\Models\RealisasiRincian::CODE_LOCAL_RETURN, \App\Models\RealisasiRincian::CODE_DESTINATION_OUTBOUND, \App\Models\RealisasiRincian::CODE_DESTINATION_RETURN], true))
                                     <article class="realization-detail-card" data-realization-item
                                         data-category="{{ $item['category'] }}" data-key="{{ $key }}"
-                                        @if($isAirBenchmark) data-air-benchmark="1" data-benchmark-amount="{{ $item['benchmark_amount'] ?? 0 }}" data-benchmark-source="{{ $item['benchmark_source'] ?? 'unavailable' }}" data-terminal-benchmark="{{ $isTerminalBenchmark ? '1' : '0' }}" @endif>
+                                        @if ($isAirBenchmark) data-air-benchmark="1" data-benchmark-amount="{{ $item['benchmark_amount'] ?? 0 }}" data-benchmark-source="{{ $item['benchmark_source'] ?? 'unavailable' }}" data-terminal-benchmark="{{ $isTerminalBenchmark ? '1' : '0' }}" @endif>
                                         <input type="hidden" name="items[{{ $key }}][id]"
                                             value="{{ $item['id'] }}">
                                         <input type="hidden" name="items[{{ $key }}][code]"
@@ -164,30 +175,33 @@
                                                 @error("items.{$key}.amount")
                                                     <div class="text-danger small mt-1">{{ $message }}</div>
                                                 @enderror
-                                                @if(
-                                                    ($recommendation['transport_rate_source'] ?? 'legacy') === 'pmk_ground'
-                                                    && in_array($item['code'], [
-                                                        \App\Models\RealisasiRincian::CODE_GROUND_OUTBOUND,
-                                                        \App\Models\RealisasiRincian::CODE_GROUND_RETURN,
-                                                    ], true)
-                                                )
+                                                @if (
+                                                    ($recommendation['transport_rate_source'] ?? 'legacy') === 'pmk_ground' &&
+                                                        in_array(
+                                                            $item['code'],
+                                                            [\App\Models\RealisasiRincian::CODE_GROUND_OUTBOUND, \App\Models\RealisasiRincian::CODE_GROUND_RETURN],
+                                                            true))
                                                     <div class="form-text">
-                                                        Patokan satu arah Rp {{ number_format($recommendation['ground_transport_one_way'], 0, ',', '.') }}.
+                                                        Patokan satu arah Rp
+                                                        {{ number_format($recommendation['ground_transport_one_way'], 0, ',', '.') }}.
                                                     </div>
                                                 @elseif(
-                                                    ($recommendation['transport_rate_source'] ?? 'legacy') === 'pmk_ground'
-                                                    && $item['category'] === \App\Models\RealisasiRincian::CATEGORY_TRANSPORT
-                                                    && ! $item['is_preset']
+                                                    ($recommendation['transport_rate_source'] ?? 'legacy') === 'pmk_ground' &&
+                                                        $item['category'] === \App\Models\RealisasiRincian::CATEGORY_TRANSPORT &&
+                                                        !$item['is_preset']
                                                 )
                                                     <div class="form-text text-warning-emphasis">
-                                                        Rincian tambahan tidak mempunyai pasangan tarif PMK; nilai sistem Rp0.
+                                                        Rincian tambahan tidak mempunyai pasangan tarif PMK; nilai sistem
+                                                        Rp0.
                                                     </div>
                                                 @elseif($isAirBenchmark)
                                                     <div class="form-text">
-                                                        @if(($item['benchmark_source'] ?? null) === 'pmk')
-                                                            Patokan PMK Rp {{ number_format($item['benchmark_amount'] ?? 0, 0, ',', '.') }}.
+                                                        @if (($item['benchmark_source'] ?? null) === 'pmk')
+                                                            Patokan PMK Rp
+                                                            {{ number_format($item['benchmark_amount'] ?? 0, 0, ',', '.') }}.
                                                         @elseif(($item['benchmark_source'] ?? null) === 'legacy')
-                                                            Tarif PMK tidak tersedia · estimasi legacy Rp {{ number_format($item['benchmark_amount'] ?? 0, 0, ',', '.') }}.
+                                                            Tarif PMK tidak tersedia · estimasi legacy Rp
+                                                            {{ number_format($item['benchmark_amount'] ?? 0, 0, ',', '.') }}.
                                                         @else
                                                             Tarif PMK tidak tersedia; nilai aktual wajib dijelaskan.
                                                         @endif
@@ -213,24 +227,46 @@
                                                 @endif
                                             </div>
                                         </div>
-                                        @if($isAirBenchmark)
+                                        @if ($isAirBenchmark)
                                             <div class="air-overrun-fields mt-3" data-air-overrun-fields hidden>
-                                                <div class="alert alert-warning py-2 small mb-3"><i class="bi bi-exclamation-triangle me-1"></i> Nominal melampaui patokan. Jelaskan kebutuhan biaya aktual ini.</div>
-                                                <label for="overrun-reason-{{ $key }}" class="form-label fw-semibold">Alasan melampaui patokan</label>
-                                                <textarea id="overrun-reason-{{ $key }}" name="items[{{ $key }}][overrun_reason]" rows="2" maxlength="2000" class="form-control @error("items.{$key}.overrun_reason") is-invalid @enderror">{{ old("items.{$key}.overrun_reason", $item['overrun_reason'] ?? '') }}</textarea>
-                                                @error("items.{$key}.overrun_reason")<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                                @if($isTerminalBenchmark && ($item['benchmark_source'] ?? null) === 'pmk')
+                                                <div class="alert alert-warning py-2 small mb-3"><i
+                                                        class="bi bi-exclamation-triangle me-1"></i> Nominal melampaui
+                                                    patokan. Jelaskan kebutuhan biaya aktual ini.</div>
+                                                <label for="overrun-reason-{{ $key }}"
+                                                    class="form-label fw-semibold">Alasan melampaui patokan</label>
+                                                <textarea id="overrun-reason-{{ $key }}" name="items[{{ $key }}][overrun_reason]" rows="2"
+                                                    maxlength="2000" class="form-control @error("items.{$key}.overrun_reason") is-invalid @enderror">{{ old("items.{$key}.overrun_reason", $item['overrun_reason'] ?? '') }}</textarea>
+                                                @error("items.{$key}.overrun_reason")
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                                @if ($isTerminalBenchmark && ($item['benchmark_source'] ?? null) === 'pmk')
                                                     <div class="form-check mt-3">
-                                                        <input type="hidden" name="items[{{ $key }}][office_route_confirmed]" value="0">
-                                                        <input id="office-route-{{ $key }}" class="form-check-input" type="checkbox" name="items[{{ $key }}][office_route_confirmed]" value="1" @checked(old("items.{$key}.office_route_confirmed", $item['office_route_confirmed'] ?? false))>
-                                                        <label class="form-check-label" for="office-route-{{ $key }}">Perjalanan dilakukan dari/ke kantor.</label>
+                                                        <input type="hidden"
+                                                            name="items[{{ $key }}][office_route_confirmed]"
+                                                            value="0">
+                                                        <input id="office-route-{{ $key }}"
+                                                            class="form-check-input" type="checkbox"
+                                                            name="items[{{ $key }}][office_route_confirmed]"
+                                                            value="1" @checked(old("items.{$key}.office_route_confirmed", $item['office_route_confirmed'] ?? false))>
+                                                        <label class="form-check-label"
+                                                            for="office-route-{{ $key }}">Perjalanan dilakukan
+                                                            dari/ke kantor.</label>
                                                     </div>
                                                     <div class="form-check mt-2">
-                                                        <input type="hidden" name="items[{{ $key }}][non_private_vehicle_confirmed]" value="0">
-                                                        <input id="non-private-{{ $key }}" class="form-check-input" type="checkbox" name="items[{{ $key }}][non_private_vehicle_confirmed]" value="1" @checked(old("items.{$key}.non_private_vehicle_confirmed", $item['non_private_vehicle_confirmed'] ?? false))>
-                                                        <label class="form-check-label" for="non-private-{{ $key }}">Tidak menggunakan kendaraan pribadi.</label>
+                                                        <input type="hidden"
+                                                            name="items[{{ $key }}][non_private_vehicle_confirmed]"
+                                                            value="0">
+                                                        <input id="non-private-{{ $key }}"
+                                                            class="form-check-input" type="checkbox"
+                                                            name="items[{{ $key }}][non_private_vehicle_confirmed]"
+                                                            value="1" @checked(old("items.{$key}.non_private_vehicle_confirmed", $item['non_private_vehicle_confirmed'] ?? false))>
+                                                        <label class="form-check-label"
+                                                            for="non-private-{{ $key }}">Tidak menggunakan
+                                                            kendaraan pribadi.</label>
                                                     </div>
-                                                    @error("items.{$key}.office_route_confirmed")<div class="text-danger small mt-2">{{ $message }}</div>@enderror
+                                                    @error("items.{$key}.office_route_confirmed")
+                                                        <div class="text-danger small mt-2">{{ $message }}</div>
+                                                    @enderror
                                                 @endif
                                             </div>
                                         @endif
@@ -248,8 +284,9 @@
                             <h2 class="h6 mb-1">Transportasi lainnya</h2>
                             <p class="small text-muted mb-0">
                                 Tambahkan hanya biaya transportasi sah yang belum tersedia pada rincian utama.
-                                @if(in_array(($recommendation['transport_rate_source'] ?? 'legacy'), ['pmk_ground', 'pmk_air'], true))
-                                    Rincian tambahan tetap dicatat, tetapi nilai disetujui sistem Rp0 karena tidak mempunyai pasangan tarif PMK.
+                                @if (in_array($recommendation['transport_rate_source'] ?? 'legacy', ['pmk_ground', 'pmk_air'], true))
+                                    Rincian tambahan tetap dicatat, tetapi nilai disetujui sistem Rp0 karena tidak mempunyai
+                                    pasangan tarif PMK.
                                 @endif
                             </p>
                         </div>
@@ -312,10 +349,12 @@
                         <input id="amount-__KEY__" type="number" name="items[__KEY__][amount]" min="1"
                             step="1" value="0" class="form-control detail-amount" required>
                     </div>
-                    @if(($recommendation['transport_rate_source'] ?? 'legacy') === 'pmk_ground')
-                        <div class="form-text text-warning-emphasis">Tidak mempunyai pasangan tarif PMK; nilai sistem Rp0.</div>
+                    @if (($recommendation['transport_rate_source'] ?? 'legacy') === 'pmk_ground')
+                        <div class="form-text text-warning-emphasis">Tidak mempunyai pasangan tarif PMK; nilai sistem Rp0.
+                        </div>
                     @elseif(($recommendation['transport_rate_source'] ?? 'legacy') === 'pmk_air')
-                        <div class="form-text text-warning-emphasis">Tidak mempunyai patokan PMK. Nilai aktual tetap diperiksa dari bukti.</div>
+                        <div class="form-text text-warning-emphasis">Tidak mempunyai patokan PMK. Nilai aktual tetap
+                            diperiksa dari bukti.</div>
                     @endif
                 </div>
                 <div class="col-md-7">
@@ -492,13 +531,15 @@
                         const benchmark = Number(row.dataset.benchmarkAmount || 0);
                         const claimed = Number(row.querySelector('.detail-amount')?.value || 0);
                         const benchmarkText = document.createElement('small');
-                        benchmarkText.className = claimed > benchmark ? 'text-warning-emphasis' : 'text-success';
-                        benchmarkText.textContent = claimed > benchmark
-                            ? `Melebihi patokan ${rupiah(benchmark)} sebesar ${rupiah(claimed - benchmark)}`
-                            : `Dalam patokan ${rupiah(benchmark)}`;
+                        benchmarkText.className = claimed > benchmark ?
+                            'text-warning-emphasis' : 'text-success';
+                        benchmarkText.textContent = claimed > benchmark ?
+                            `Melebihi patokan ${rupiah(benchmark)} sebesar ${rupiah(claimed - benchmark)}` :
+                            `Dalam patokan ${rupiah(benchmark)}`;
                         line.appendChild(benchmarkText);
                         if (claimed > benchmark) {
-                            const reasonText = row.querySelector('[name$="[overrun_reason]"]')?.value?.trim();
+                            const reasonText = row.querySelector('[name$="[overrun_reason]"]')
+                                ?.value?.trim();
                             if (reasonText) {
                                 const reason = document.createElement('small');
                                 reason.textContent = `Alasan: ${reasonText}`;

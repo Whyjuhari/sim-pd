@@ -2,6 +2,19 @@
 @section('title', 'Buat SPT - SIM-PD')
 @section('brand', 'Buat Surat Perintah Tugas')
 @section('content')
+    @php
+        $selectedEmployeeIds = collect(old('user_ids', []))
+            ->filter(fn($id) => (string) $id !== '')
+            ->map(fn($id) => (string) $id)
+            ->unique()
+            ->values();
+        $employeesById = $employees->keyBy(fn($employee) => (string) $employee->id);
+        $employeeOptions = $selectedEmployeeIds
+            ->map(fn($id) => $employeesById->get($id))
+            ->filter()
+            ->concat($employees->reject(fn($employee) => $selectedEmployeeIds->contains((string) $employee->id)));
+    @endphp
+
     <div class="row justify-content-center">
         <div class="col-lg-9">
             <div class="card shadow-sm">
@@ -14,6 +27,27 @@
                                 placeholder="2.23/157/LP.00.04/XI/2026" required></div>
                         <div class="mb-3"><label class="form-label fw-bold">Menimbang</label><input type="text"
                                 name="menimbang" value="{{ old('menimbang') }}" class="form-control" required></div>
+                        <div class="mb-3">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+                                <label for="spt_template_id" class="form-label fw-bold mb-0">Template SPT</label>
+                                <a href="{{ route('travel-orders.create') }}" class="small"><i
+                                        class="bi bi-arrow-left-circle me-1"></i>Ganti template</a>
+                            </div>
+                            <select id="spt_template_id" name="spt_template_id" class="form-select">
+                                <option value="">Template Sistem (Legacy)</option>
+                                @foreach ($sptTemplates as $template)
+                                    <option value="{{ $template->id }}"
+                                        @selected(old('spt_template_id', $selectedTemplateId > 0 ? $selectedTemplateId : null) == $template->id)>
+                                        {{ $template->nama }}{{ $template->is_default ? ' (Default)' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div class="form-text">Menentukan kop dan layout cetak SPT. Template dikunci saat SPT selesai
+                                dibuat.</div>
+                            @error('spt_template_id')
+                                <div class="text-danger small">{{ $message }}</div>
+                            @enderror
+                        </div>
                         <div class="row">
                             <div class="col-md-6 mb-3"><label class="form-label fw-bold">Nomor Memo Internal</label><input
                                     type="text" name="no_memo" value="{{ old('no_memo') }}" class="form-control"
@@ -30,42 +64,65 @@
                         </div>
 
                         <h6 class="text-muted border-bottom pb-2 mb-3 mt-4">Daftar Pegawai yang Berangkat</h6>
-                        <div class="alert alert-info small py-2"><i class="bi bi-info-circle"></i> Tambahkan baris jika SPT
-                            ditujukan kepada lebih dari satu pegawai.</div>
-                        <div id="employee-container">
-                            @foreach (old('user_ids', ['']) as $selectedId)
-                                <div class="row mb-2 employee-row">
-                                    <div class="col-10"><select name="user_ids[]" class="form-select" required>
-                                            <option value="">-- Pilih Pegawai --</option>
-                                            @foreach ($employees as $employee)
-                                                <option value="{{ $employee->id }}" @selected((string) $selectedId === (string) $employee->id)>
-                                                    {{ $employee->nama_lengkap }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-2"><button type="button"
-                                            class="d-flex justify-content-center align-items-center btn btn-danger remove-employee"
-                                            {{ $loop->first ? 'disabled' : '' }}><i class="bi bi-trash"></i></button></div>
-                                </div>
-                            @endforeach
+                        <div class="alert alert-info small py-2"><i class="bi bi-info-circle"></i> Cari lalu pilih satu
+                            atau beberapa pegawai.</div>
+                        <div class="mb-4 spt-searchable-field">
+                            {{-- <label id="employeeSelectLabel" for="employeeSelect" class="form-label fw-bold">Pegawai</label> --}}
+                            <select id="employeeSelect" name="user_ids[]" class="form-select" multiple required
+                                data-spt-searchable="employees" data-placeholder="Cari dan pilih pegawai">
+                                @foreach ($employeeOptions as $employee)
+                                    @php
+                                        $employeeDescription = collect([
+                                            $employee->nip ? 'NIP. ' . $employee->nip : null,
+                                            $employee->jabatan,
+                                        ])
+                                            ->filter()
+                                            ->implode(' · ');
+                                    @endphp
+                                    <option value="{{ $employee->id }}" @selected($selectedEmployeeIds->contains((string) $employee->id))
+                                        data-label-description="{{ $employeeDescription }}"
+                                        data-custom-properties="{{ json_encode(
+                                            [
+                                                'nip' => (string) ($employee->nip ?? ''),
+                                                'position' => (string) ($employee->jabatan ?? ''),
+                                            ],
+                                            JSON_UNESCAPED_UNICODE,
+                                        ) }}">
+                                        {{ $employee->nama_lengkap }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('user_ids')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
                         </div>
-                        <button type="button" id="add-employee" class="btn btn-sm btn-success mb-4"><i
-                                class="bi bi-plus-circle"></i> Tambah Pegawai Lain</button>
 
                         <h6 class="text-muted border-bottom pb-2 mb-3">Detail Waktu & Anggaran</h6>
                         <div class="row">
-                            <div class="col-md-6 mb-3"><label class="fw-bold">Kota Tujuan</label><select
-                                    id="destinationSelect" name="kota_tujuan" class="form-select" required>
-                                    <option value="">-- Pilih Kota --</option>
+                            <div class="col-md-6 mb-3 spt-searchable-field"><label id="destinationSelectLabel"
+                                    for="destinationSelect" class="fw-bold mb-2">Kota Tujuan</label>
+                                <select id="destinationSelect" name="kota_tujuan" class="form-select" required
+                                    data-spt-searchable="destination" data-placeholder="Cari kota tujuan">
+                                    <option value="" placeholder>-- Pilih Kota --</option>
                                     @foreach ($destinations as $destination)
-                                        <option value="{{ $destination->kota_tujuan }}" @selected(old('kota_tujuan') === $destination->kota_tujuan)>
+                                        @php($provinceName = $destination->province?->name ?? '')
+                                        <option value="{{ $destination->kota_tujuan }}" @selected(old('kota_tujuan') === $destination->kota_tujuan)
+                                            data-label-description="{{ $provinceName }}"
+                                            data-custom-properties="{{ json_encode(
+                                                [
+                                                    'province' => $provinceName,
+                                                ],
+                                                JSON_UNESCAPED_UNICODE,
+                                            ) }}">
                                             {{ $destination->kota_tujuan }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-6 mb-3"><label class="fw-bold">Tempat Berangkat</label><input type="text"
-                                    name="tempat_berangkat" value="{{ old('tempat_berangkat', 'Pangkep') }}"
-                                    class="form-control" required></div>
+                            <div class="col-md-6 mb-3">
+                                <label class="fw-bold">Tempat Berangkat</label>
+                                <input type="text" name="tempat_berangkat"
+                                    value="{{ old('tempat_berangkat', 'Pangkep') }}" class="form-control" required>
+                            </div>
                         </div>
                         <div class="row">
                             <div class="col-md-4 mb-3"><label class="fw-bold">Tgl Berangkat</label><input type="date"
@@ -122,18 +179,6 @@
 
 @push('scripts')
     <script>
-        const container = document.getElementById('employee-container');
-        document.getElementById('add-employee').addEventListener('click', () => {
-            const row = container.querySelector('.employee-row').cloneNode(true);
-            row.querySelector('select').value = '';
-            row.querySelector('button').disabled = false;
-            container.appendChild(row);
-        });
-        container.addEventListener('click', event => {
-            const button = event.target.closest('.remove-employee');
-            if (button && !button.disabled) button.closest('.employee-row').remove();
-        });
-
         function calculateDays() {
             const start = document.getElementById('departure').value;
             const end = document.getElementById('return').value;

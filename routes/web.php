@@ -17,6 +17,7 @@ use App\Http\Controllers\DailyAllowanceImportController;
 use App\Http\Controllers\HotelRateImportController;
 use App\Http\Controllers\GroundTransportImportController;
 use App\Http\Controllers\AirTransportImportController;
+use App\Http\Controllers\SptTemplateController;
 use App\Http\Controllers\SystemHealthController;
 use Illuminate\Support\Facades\Route;
 
@@ -167,6 +168,35 @@ Route::middleware('auth')->group(function (): void {
             )
                 ->whereUuid('sptGroupId')
                 ->name('travel-orders.show');
+
+            Route::get(
+                '/template-spt',
+                [SptTemplateController::class, 'index']
+            )->name('spt-templates.index');
+            Route::post(
+                '/template-spt',
+                [SptTemplateController::class, 'store']
+            )->middleware('throttle:10,1')->name('spt-templates.store');
+            Route::put(
+                '/template-spt/{template}/default',
+                [SptTemplateController::class, 'setDefault']
+            )->whereNumber('template')->name('spt-templates.default');
+            Route::post(
+                '/template-spt/{template}/toggle',
+                [SptTemplateController::class, 'toggleActive']
+            )->whereNumber('template')->name('spt-templates.toggle');
+            Route::get(
+                '/template-spt/{template}/unduh',
+                [SptTemplateController::class, 'download']
+            )->whereNumber('template')->name('spt-templates.download');
+            Route::get(
+                '/template-spt/{template}/thumbnail',
+                [SptTemplateController::class, 'thumbnail']
+            )->whereNumber('template')->name('spt-templates.thumbnail');
+            Route::delete(
+                '/template-spt/{template}',
+                [SptTemplateController::class, 'destroy']
+            )->whereNumber('template')->name('spt-templates.destroy');
 
             Route::get(
                 '/spt/{sptGroupId}/edit',
@@ -336,6 +366,11 @@ Route::middleware('auth')->group(function (): void {
                 '/perjalanan/{travel}/laporan',
                 [TravelReportController::class, 'edit']
             )->name('travel-reports.edit');
+
+            Route::post(
+                '/perjalanan/{travel}/laporan/preview',
+                [TravelReportController::class, 'preview']
+            )->name('travel-reports.preview');
 
             Route::put(
                 '/perjalanan/{travel}/laporan',

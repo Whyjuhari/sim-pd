@@ -178,6 +178,7 @@ if (previewTriggers.length > 0) {
         panelPart(panel, '[data-document-preview-loading]')?.classList.add('d-none');
         panelPart(panel, '[data-document-preview-error]')?.classList.add('d-none');
         panelPart(panel, '[data-document-preview-viewer]')?.classList.add('d-none');
+        panelPart(panel, '[data-document-preview-footer]')?.classList.add('d-none');
         setOuterDocumentActions(panel, false);
 
         const status = panelPart(panel, '[data-document-preview-status]');
@@ -201,6 +202,7 @@ if (previewTriggers.length > 0) {
         activePanel = null;
         activeTrigger = null;
         activeRecord = null;
+        panel.dispatchEvent(new CustomEvent('document-preview:closed'));
 
         if (restoreFocus && trigger && !trigger.disabled) {
             trigger.focus({ preventScroll: true });
@@ -217,16 +219,42 @@ if (previewTriggers.length > 0) {
         return 'Pembuatan PDF gagal. Silakan coba kembali atau hubungi administrator.';
     };
 
+    const responseErrorMessage = async (response) => {
+        const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
+
+        if (contentType.includes('application/json')) {
+            try {
+                const payload = await response.json();
+                const validationMessage = Object.values(payload.errors ?? {})
+                    .flat()
+                    .find((message) => typeof message === 'string' && message.trim() !== '');
+
+                if (validationMessage) return validationMessage;
+                if (typeof payload.message === 'string' && payload.message.trim() !== '') {
+                    return payload.message;
+                }
+            } catch {
+                // Gunakan pesan aman berdasarkan status jika respons JSON rusak.
+            }
+        }
+
+        return errorMessageFor(response.status);
+    };
+
     const preparePanel = (panel, trigger) => {
         const documentLabel = trigger.dataset.documentLabel ?? 'Dokumen';
         const documentNumber = panel.dataset.documentNumber ?? '';
         const label = panelPart(panel, '[data-document-preview-label]');
         const frame = panelPart(panel, '[data-document-preview-frame]');
         const fallbackLink = panelPart(panel, '[data-document-preview-fallback]');
+        const hasGetFallback = !trigger.dataset.documentForm;
 
         if (label) label.textContent = `Pratinjau ${documentLabel}`;
         if (frame) frame.title = `PDF ${documentLabel}${documentNumber ? ` ${documentNumber}` : ''}`;
-        if (fallbackLink) fallbackLink.href = trigger.dataset.documentUrl ?? '#';
+        if (fallbackLink) {
+            fallbackLink.classList.toggle('d-none', !hasGetFallback);
+            fallbackLink.href = hasGetFallback ? (trigger.dataset.documentUrl ?? '#') : '#';
+        }
     };
 
     const showLoading = (panel, trigger) => {
@@ -235,6 +263,7 @@ if (previewTriggers.length > 0) {
         panelPart(panel, '[data-document-preview-loading]')?.classList.remove('d-none');
         const status = panelPart(panel, '[data-document-preview-status]');
         if (status) status.textContent = 'Menyiapkan dokumen...';
+        panel.dispatchEvent(new CustomEvent('document-preview:loading'));
     };
 
     const showError = (panel, message) => {
@@ -245,6 +274,9 @@ if (previewTriggers.length > 0) {
         const errorMessage = panelPart(panel, '[data-document-preview-error-message]');
         if (status) status.textContent = 'Gagal memuat dokumen';
         if (errorMessage) errorMessage.textContent = message;
+        panel.dispatchEvent(new CustomEvent('document-preview:error', {
+            detail: { message },
+        }));
     };
 
     const showPdfJsFallback = (panel, message) => {
@@ -413,7 +445,9 @@ if (previewTriggers.length > 0) {
         panelPart(panel, '[data-document-preview-loading]')?.classList.add('d-none');
         panelPart(panel, '[data-document-preview-error]')?.classList.add('d-none');
         panelPart(panel, '[data-document-preview-viewer]')?.classList.remove('d-none');
+        panelPart(panel, '[data-document-preview-footer]')?.classList.remove('d-none');
         applyViewerMode(panel, { force: true });
+        panel.dispatchEvent(new CustomEvent('document-preview:ready'));
         panel.scrollIntoView({
             behavior: prefersReducedMotion.matches ? 'auto' : 'smooth',
             block: 'start',
@@ -521,6 +555,14 @@ if (previewTriggers.length > 0) {
         const documentUrl = trigger.dataset.documentUrl;
         if (!panel || !documentUrl) return;
 
+        const formId = trigger.dataset.documentForm;
+        const requestForm = formId ? document.getElementById(formId) : null;
+        if (formId && !(requestForm instanceof HTMLFormElement)) return;
+        if (requestForm instanceof HTMLFormElement && !requestForm.checkValidity()) {
+            requestForm.reportValidity();
+            return;
+        }
+
         if (activePanel === panel && activeTrigger === trigger && !force) {
             closePreview();
             return;
@@ -545,15 +587,21 @@ if (previewTriggers.length > 0) {
         const currentRequest = ++requestVersion;
 
         try {
+            const formData = requestForm instanceof HTMLFormElement
+                ? new FormData(requestForm)
+                : null;
+            formData?.delete('_method');
             const response = await fetch(documentUrl, {
+                method: formData ? 'POST' : 'GET',
                 credentials: 'same-origin',
                 headers: {
-                    Accept: 'application/pdf',
+                    Accept: formData ? 'application/json, application/pdf' : 'application/pdf',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
+                body: formData,
             });
             const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
-            if (!response.ok) throw new Error(errorMessageFor(response.status));
+            if (!response.ok) throw new Error(await responseErrorMessage(response));
             if (!contentType.includes('application/pdf')) {
                 throw new Error(response.redirected
                     ? 'Sesi login mungkin telah berakhir. Muat ulang halaman lalu masuk kembali.'
