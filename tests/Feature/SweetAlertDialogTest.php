@@ -63,7 +63,7 @@ class SweetAlertDialogTest extends TestCase
 
         preg_match_all('/\bdata-sim-confirm(?=\s|>)/', $confirmationMarkup, $confirmationAttributes);
 
-        $this->assertCount(13, $confirmationAttributes[0]);
+        $this->assertCount(14, $confirmationAttributes[0]);
         $this->assertStringContainsString('data-realization-preview', $confirmationMarkup);
         $this->assertStringContainsString("Swal.fire", $confirmationMarkup);
         $this->assertStringContainsString('data-existing-evidence', $confirmationMarkup);

@@ -61,6 +61,7 @@ class SptSearchableSelectTest extends TestCase
 
         $response->assertOk()
             ->assertSee('data-spt-searchable="employees"', false)
+            ->assertSee('data-spt-layout="dropdown-search"', false)
             ->assertSee('data-spt-searchable="destination"', false)
             ->assertSee('data-label-description="SULAWESI SELATAN"', false)
             ->assertSee('199001012020011001', false)
@@ -96,6 +97,8 @@ class SptSearchableSelectTest extends TestCase
         $this->assertStringContainsString('"customProperties.nip"', $script);
         $this->assertStringContainsString('"customProperties.position"', $script);
         $this->assertStringContainsString('choices.getValue(true)', $script);
+        $this->assertStringContainsString('choices__input--dropdown-search', $script);
+        $this->assertStringContainsString('dropdown.insertBefore(searchInput, dropdownResults)', $script);
 
         $package = json_decode(file_get_contents(base_path('package.json')), true, flags: JSON_THROW_ON_ERROR);
         $this->assertSame('11.2.3', $package['dependencies']['choices.js'] ?? null);

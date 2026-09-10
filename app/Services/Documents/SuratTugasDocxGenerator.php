@@ -47,11 +47,15 @@ class SuratTugasDocxGenerator
 
 
         $template->setValues([
-            'nomor_surat' => $data['no_spt'] ?? '',
+            'nomor_surat' => $data['spt_document_number'] ?? $data['no_spt'] ?? '',
             'menimbang' => $data['menimbang'] ?? '',
             'nomor_memo' => $data['no_memo'] ?? '-',
             'perihal_memo' => $data['perihal_memo'] ?? '-',
             'tanggal_memo' => $this->formatDate($data['tgl_memo'] ?? null),
+            'tahun_anggaran' => $data['dipa_fiscal_year_snapshot']
+                ?? ($data['tgl_berangkat'] ? Carbon::parse($data['tgl_berangkat'])->year : '-'),
+            'nomor_dipa' => $data['dipa_number_snapshot'] ?? '-',
+            'tanggal_dipa' => $this->formatDate($data['dipa_date_snapshot'] ?? null),
             'akun' => $data['akun_anggaran'] ?? '-',
             'tanggal_pelaksanaan' => $this->formatDate($data['tgl_berangkat'] ?? null),
             'tanggal_surat' => Carbon::now()->locale('id')->translatedFormat('d F Y'),

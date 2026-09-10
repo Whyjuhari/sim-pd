@@ -37,12 +37,22 @@
                     href="{{ route('admin.system-health') }}"><i class="bi bi-heart-pulse-fill"></i><span>Kesehatan
                         Sistem</span></a>
             @elseif($role === \App\Models\User::ROLE_OFFICER)
-                <a class="nav-link {{ request()->routeIs('travel-orders.*') ? 'active' : '' }}"
+                {{-- <a class="nav-link {{ request()->routeIs('travel-orders.*') ? 'active' : '' }}"
                     href="{{ route('travel-orders.create') }}"><i class="bi bi-file-earmark-plus-fill"></i><span>Buat
-                        SPT</span></a>
+                        Draft
+                        SPT</span></a> --}}
+                <a class="nav-link {{ request()->routeIs('spt-srikandi.*') ? 'active' : '' }}"
+                    href="{{ route('spt-srikandi.index') }}"><i class="bi bi-send-check-fill"></i><span>Kelola
+                        SPT</span>
+                    @if (($navigationWorkCount ?? 0) > 0)
+                        <span class="nav-work-badge"
+                            aria-label="{{ $navigationWorkCount }} SPT Srikandi memerlukan tindakan">{{ $navigationWorkCount > 99 ? '99+' : $navigationWorkCount }}</span>
+                    @endif
+                </a>
                 <a class="nav-link {{ request()->routeIs('spt-templates.*') ? 'active' : '' }}"
-                    href="{{ route('spt-templates.index') }}"><i class="bi bi-file-earmark-word-fill"></i><span>Template
-                        SPT</span></a>
+                    href="{{ route('spt-templates.index') }}"><i
+                        class="bi bi-file-earmark-word-fill"></i><span>Template
+                        Surat</span></a>
             @elseif($role === \App\Models\User::ROLE_PROGRAM)
                 <a class="nav-link {{ request()->routeIs('program.budget.*', 'program.tariffs.*', 'program.accounts.*', 'program.daily-allowances.*') ? 'active' : '' }}"
                     href="{{ route('program.budget.edit') }}"><i class="bi bi-sliders2-vertical"></i><span>Master

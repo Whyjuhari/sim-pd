@@ -9,6 +9,7 @@ return [
         ],
         'temporary_dir' => storage_path('app/private/documents/temporary'),
         'pdf_dir' => storage_path('app/private/documents/pdf'),
+        'spt_inline_employee_limit' => 2,
         'cache' => [
             'directory' => storage_path('app/private/documents/generated'),
             'version' => env('SIMPD_DOCUMENT_CACHE_VERSION', '1'),

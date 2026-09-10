@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\PerjalananDinas;
+use App\Models\SptSrikandiWorkflow;
 use App\Services\Documents\TravelPdfDocumentService;
+use App\Services\Uploads\SptSrikandiDocumentStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -11,7 +13,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class DocumentController extends Controller
 {
-    public function __construct(private readonly TravelPdfDocumentService $documents) {}
+    public function __construct(
+        private readonly TravelPdfDocumentService $documents,
+        private readonly SptSrikandiDocumentStorage $srikandiStorage,
+    ) {}
 
     public function perjadin(Request $request): BinaryFileResponse
     {
@@ -34,7 +39,7 @@ class DocumentController extends Controller
 
         try {
             $pdfPath = $this->documents->perjadin($travel);
-            $safeNumber = preg_replace('/[^A-Za-z0-9._-]+/', '_', $travel->no_spt) ?: 'Perjalanan';
+            $safeNumber = preg_replace('/[^A-Za-z0-9._-]+/', '_', $travel->sptOperationalReference()) ?: 'Perjalanan';
             $filename = 'Dokumen_Perjalanan_'.$safeNumber.'.pdf';
 
             return response()
@@ -84,13 +89,33 @@ class DocumentController extends Controller
             $travel
         );
         try {
-            $pdfPath = $this->documents->suratTugas($travel);
+            $workflow = $travel->spt_group_id
+                ? SptSrikandiWorkflow::query()->where('spt_group_id', $travel->spt_group_id)->first()
+                : null;
+
+            if ($workflow?->status === SptSrikandiWorkflow::STATUS_PUBLISHED) {
+                $pdfPath = $this->srikandiStorage->verifiedAbsolutePath(
+                    $workflow->official_pdf_path,
+                    $workflow->official_pdf_sha256
+                );
+            } elseif ($workflow?->draft_pdf_path) {
+                $pdfPath = $this->srikandiStorage->verifiedAbsolutePath(
+                    $workflow->draft_pdf_path,
+                    $workflow->draft_pdf_sha256
+                );
+            } else {
+                $pdfPath = $this->documents->suratTugas($travel);
+            }
+
+            if (! $pdfPath) {
+                throw new \RuntimeException('Berkas Surat Tugas privat tidak tersedia atau tidak valid.');
+            }
 
             $safeNumber =
                 preg_replace(
                     '/[^A-Za-z0-9._-]+/',
                     '_',
-                    $travel->no_spt
+                    $travel->sptOperationalReference()
                 )
                 ?: 'SPT';
 
@@ -154,7 +179,7 @@ class DocumentController extends Controller
                 preg_replace(
                     '/[^A-Za-z0-9._-]+/',
                     '_',
-                    $travel->no_spt
+                    $travel->sptOperationalReference()
                 )
                 ?: 'Laporan';
 

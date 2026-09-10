@@ -57,7 +57,7 @@
                 <tbody>
                     @forelse($travels as $travel)
                         <tr>
-                            <td class="fw-semibold">{{ $travel->no_spt }}</td>
+                            <td class="fw-semibold">{{ $travel->sptOperationalReference() }}</td>
                             <td>{{ $travel->kota_tujuan }}</td>
                             <td>{{ $travel->tgl_berangkat->format('d/m/Y') }}–{{ $travel->tgl_kembali->format('d/m/Y') }}</td>
                             <td><span class="badge status-{{ $travel->status }}">{{ \App\Support\TravelStatus::label($travel->status) }}</span></td>

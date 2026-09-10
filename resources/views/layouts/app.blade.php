@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'SIM-PD BPVP Pangkep')</title>
+    <title>@yield('title', 'SIM Perjalanan Dinas BPVP Pangkep')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('head')
 </head>
@@ -18,7 +18,8 @@
         \App\Models\User::ROLE_HEAD => 'Pimpinan',
     ];
     $roleLabel = $roleLabels[auth()->user()->role] ?? 'Pengguna';
-    $pageTitle = trim($__env->yieldContent('page-title')) ?: trim($__env->yieldContent('brand')) ?: 'SIM-PD';
+    $pageTitle =
+        trim($__env->yieldContent('page-title')) ?: trim($__env->yieldContent('brand')) ?: 'SIM | Perjalanan Dinas';
     $pageSubtitle = trim($__env->yieldContent('page-subtitle'));
     $isDashboard = request()->routeIs('dashboard.*');
 @endphp
@@ -36,7 +37,7 @@
             <a class="navbar-brand app-brand me-auto" href="{{ route('dashboard') }}">
                 <span class="app-logo-wrap"><img src="{{ asset('assets/images/logo.png') }}" class="app-logo"
                         alt="Logo BPVP Pangkep"></span>
-                <span class="app-brand-copy"><strong>SIM-PD</strong><small>BPVP Pangkep</small></span>
+                <span class="app-brand-copy"><strong>SIM-Perjalanan Dinas</strong><small>BPVP Pangkep</small></span>
             </a>
 
             <div class="app-user-tools">

@@ -13,6 +13,7 @@
             ->map(fn($id) => $employeesById->get($id))
             ->filter()
             ->concat($employees->reject(fn($employee) => $selectedEmployeeIds->contains((string) $employee->id)));
+        $numberMode = old('spt_number_mode', \App\Models\PerjalananDinas::NUMBER_MODE_EXTERNAL);
     @endphp
 
     <div class="row justify-content-center">
@@ -22,54 +23,84 @@
                     <form action="{{ route('travel-orders.store') }}" method="post">
                         @csrf
                         <h6 class="text-muted border-bottom pb-2 mb-3">Data Surat & Tujuan</h6>
-                        <div class="mb-3"><label class="form-label fw-bold">Nomor SPT</label><input type="text"
-                                name="no_spt" value="{{ old('no_spt') }}" class="form-control"
-                                placeholder="2.23/157/LP.00.04/XI/2026" required></div>
-                        <div class="mb-3"><label class="form-label fw-bold">Menimbang</label><input type="text"
-                                name="menimbang" value="{{ old('menimbang') }}" class="form-control" required></div>
                         <div class="mb-3">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-                                <label for="spt_template_id" class="form-label fw-bold mb-0">Template SPT</label>
+                                <label class="form-label fw-bold mb-0">Template SPT</label>
                                 <a href="{{ route('travel-orders.create') }}" class="small"><i
                                         class="bi bi-arrow-left-circle me-1"></i>Ganti template</a>
                             </div>
-                            <select id="spt_template_id" name="spt_template_id" class="form-select">
-                                <option value="">Template Sistem (Legacy)</option>
-                                @foreach ($sptTemplates as $template)
-                                    <option value="{{ $template->id }}"
-                                        @selected(old('spt_template_id', $selectedTemplateId > 0 ? $selectedTemplateId : null) == $template->id)>
-                                        {{ $template->nama }}{{ $template->is_default ? ' (Default)' : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <div class="form-text">Menentukan kop dan layout cetak SPT. Template dikunci saat SPT selesai
-                                dibuat.</div>
-                            @error('spt_template_id')
-                                <div class="text-danger small">{{ $message }}</div>
+                            <input type="text" class="form-control bg-light" value="{{ $selectedTemplate['label'] }}"
+                                readonly>
+                            @if ($selectedTemplate['id'])
+                                <input type="hidden" name="spt_template_id" value="{{ $selectedTemplate['id'] }}">
+                            @endif
+                            @if ($selectedTemplate['variant'])
+                                <input type="hidden" name="spt_template_variant"
+                                    value="{{ $selectedTemplate['variant'] }}">
+                            @endif
+                        </div>
+
+                        <fieldset class="mb-3" data-spt-number-mode>
+                            <legend class="form-label fw-bold mb-2">Penomoran Naskah</legend>
+                            <div class="d-flex flex-wrap gap-3">
+                                <div class="form-check">
+                                    <input id="numberModeExternal" class="form-check-input" type="radio"
+                                        name="spt_number_mode"
+                                        value="{{ \App\Models\PerjalananDinas::NUMBER_MODE_EXTERNAL }}"
+                                        @checked($numberMode === \App\Models\PerjalananDinas::NUMBER_MODE_EXTERNAL)>
+                                    <label class="form-check-label" for="numberModeExternal">Nomor dari Srikandi</label>
+                                </div>
+                                <div class="form-check">
+                                    <input id="numberModeManual" class="form-check-input" type="radio"
+                                        name="spt_number_mode" value="{{ \App\Models\PerjalananDinas::NUMBER_MODE_MANUAL }}"
+                                        @checked($numberMode === \App\Models\PerjalananDinas::NUMBER_MODE_MANUAL)>
+                                    <label class="form-check-label" for="numberModeManual">Nomor Manual</label>
+                                </div>
+                            </div>
+                            <div class="mt-2" data-spt-number-parameter @if ($numberMode !== \App\Models\PerjalananDinas::NUMBER_MODE_EXTERNAL) hidden @endif>
+                                <input type="text" class="form-control bg-light"
+                                    value="{{ \App\Models\PerjalananDinas::NUMBER_PLACEHOLDER }}" readonly>
+                                {{-- <div class="form-text">Parameter ini tetap berada pada Surat Tugas dan akan diisi oleh
+                                    Srikandi.</div> --}}
+                            </div>
+                            <div class="mt-2" data-spt-number-manual @if ($numberMode !== \App\Models\PerjalananDinas::NUMBER_MODE_MANUAL) hidden @endif>
+                                <label for="no_spt" class="visually-hidden">Nomor SPT manual</label>
+                                <input id="no_spt" type="text" name="no_spt" value="{{ old('no_spt') }}"
+                                    class="form-control" placeholder="2.23/157/LP.00.04/XI/2026" maxlength="50"
+                                    @if ($numberMode === \App\Models\PerjalananDinas::NUMBER_MODE_MANUAL) required @endif>
+                            </div>
+                            @error('spt_number_mode')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3"><label class="form-label fw-bold">Nomor Memo Internal</label><input
-                                    type="text" name="no_memo" value="{{ old('no_memo') }}" class="form-control"
-                                    required></div>
-                            <div class="col-md-6 mb-3"><label class="form-label fw-bold">Tanggal Memo Internal</label><input
-                                    type="date" name="tgl_memo" value="{{ old('tgl_memo') }}" class="form-control"
-                                    required></div>
-                        </div>
-                        <div class="mb-3"><label class="form-label fw-bold">Perihal Memo Internal</label><input
-                                type="text" name="perihal_memo" value="{{ old('perihal_memo') }}" class="form-control"
-                                required></div>
+                            @error('no_spt')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </fieldset>
+                        <div class="mb-3"><label class="form-label fw-bold">Menimbang</label><input type="text"
+                                name="menimbang" value="{{ old('menimbang') }}" class="form-control" required></div>
+                        @if ($selectedTemplate['uses_memo'])
+                            <div class="row">
+                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Nomor Memo
+                                        Internal</label><input type="text" name="no_memo" value="{{ old('no_memo') }}"
+                                        class="form-control" required></div>
+                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Tanggal Memo
+                                        Internal</label><input type="date" name="tgl_memo" value="{{ old('tgl_memo') }}"
+                                        class="form-control" required></div>
+                            </div>
+                            <div class="mb-3"><label class="form-label fw-bold">Perihal Memo Internal</label><input
+                                    type="text" name="perihal_memo" value="{{ old('perihal_memo') }}"
+                                    class="form-control" required></div>
+                        @endif
                         <div class="mb-3"><label class="form-label fw-bold">Maksud Perjalanan Dinas</label>
                             <textarea name="maksud_perjalanan" class="form-control" rows="3" required>{{ old('maksud_perjalanan') }}</textarea>
                         </div>
 
                         <h6 class="text-muted border-bottom pb-2 mb-3 mt-4">Daftar Pegawai yang Berangkat</h6>
-                        <div class="alert alert-info small py-2"><i class="bi bi-info-circle"></i> Cari lalu pilih satu
-                            atau beberapa pegawai.</div>
-                        <div class="mb-4 spt-searchable-field">
-                            {{-- <label id="employeeSelectLabel" for="employeeSelect" class="form-label fw-bold">Pegawai</label> --}}
+                        <div class="mb-4 spt-searchable-field spt-employee-dropdown-field">
+                            <label id="employeeSelectLabel" for="employeeSelect" class="form-label fw-bold">Pegawai</label>
                             <select id="employeeSelect" name="user_ids[]" class="form-select" multiple required
-                                data-spt-searchable="employees" data-placeholder="Cari dan pilih pegawai">
+                                data-spt-searchable="employees" data-spt-layout="dropdown-search"
+                                data-placeholder="Cari dan pilih pegawai">
                                 @foreach ($employeeOptions as $employee)
                                     @php
                                         $employeeDescription = collect([
@@ -129,8 +160,8 @@
                                     name="tgl_berangkat" id="departure" value="{{ old('tgl_berangkat') }}"
                                     class="form-control" required></div>
                             <div class="col-md-4 mb-3"><label class="fw-bold">Tgl Kembali</label><input type="date"
-                                    name="tgl_kembali" id="return" value="{{ old('tgl_kembali') }}" class="form-control"
-                                    required></div>
+                                    name="tgl_kembali" id="return" value="{{ old('tgl_kembali') }}"
+                                    class="form-control" required></div>
                             <div class="col-md-4 mb-3"><label class="fw-bold">Lama (Hari)</label><input type="number"
                                     id="days" class="form-control bg-light" readonly></div>
                         </div>

@@ -65,6 +65,8 @@ class VerificationHistoryController extends Controller
     {
         return $query->where(function ($query) use ($search): void {
             $query->where('no_spt', 'like', "%{$search}%")
+                ->orWhere('spt_internal_reference', 'like', "%{$search}%")
+                ->orWhere('spt_external_number', 'like', "%{$search}%")
                 ->orWhere('kota_tujuan', 'like', "%{$search}%")
                 ->orWhereHas('pegawai', fn ($query) => $query
                     ->where('nama_lengkap', 'like', "%{$search}%"));

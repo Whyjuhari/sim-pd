@@ -70,6 +70,50 @@ const syncEmployeeOrder = (select, choices) => {
     });
 };
 
+const arrangeEmployeeDropdownSearch = (select, choices) => {
+    if (select.dataset.sptLayout !== "dropdown-search") {
+        return;
+    }
+
+    const container = select.closest(".choices");
+    const inner = container?.querySelector(".choices__inner");
+    const dropdown = container?.querySelector(".choices__list--dropdown");
+    const dropdownResults = dropdown?.querySelector(".choices__list[role='listbox']");
+    const searchInput = container?.querySelector(".choices__input--cloned");
+
+    if (!container || !inner || !dropdown || !dropdownResults || !searchInput) {
+        return;
+    }
+
+    container.classList.add("choices--dropdown-search");
+    searchInput.classList.add("choices__input--dropdown-search");
+    searchInput.placeholder = "Ketik nama, NIP, atau jabatan";
+    searchInput.setAttribute("aria-label", "Cari pegawai berdasarkan nama, NIP, atau jabatan");
+    dropdown.insertBefore(searchInput, dropdownResults);
+
+    const placeholder = document.createElement("span");
+    placeholder.className = "choices__placeholder choices__closed-placeholder";
+    placeholder.textContent = select.dataset.placeholder ?? "Cari dan pilih pegawai";
+    placeholder.setAttribute("aria-hidden", "true");
+    inner.append(placeholder);
+
+    const updatePlaceholder = () => {
+        const selectedValues = choices.getValue(true);
+        const hasSelection = Array.isArray(selectedValues)
+            ? selectedValues.length > 0
+            : selectedValues !== null && selectedValues !== undefined && selectedValues !== "";
+
+        placeholder.classList.toggle("d-none", hasSelection);
+    };
+
+    select.addEventListener("addItem", updatePlaceholder);
+    select.addEventListener("removeItem", updatePlaceholder);
+    select.addEventListener("showDropdown", () => {
+        window.requestAnimationFrame(() => searchInput.focus({ preventScroll: true }));
+    });
+    updatePlaceholder();
+};
+
 const initializeSearchableSelects = () => {
     document.querySelectorAll(selector).forEach((select) => {
         if (!(select instanceof HTMLSelectElement) || select.dataset.choicesReady) {
@@ -82,6 +126,8 @@ const initializeSearchableSelects = () => {
         if (select.dataset.sptSearchable !== "employees") {
             return;
         }
+
+        arrangeEmployeeDropdownSearch(select, choices);
 
         select.form?.addEventListener(
             "submit",

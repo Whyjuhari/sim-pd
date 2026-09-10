@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\PerjalananDinas;
+use App\Models\SptSrikandiWorkflow;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
@@ -84,6 +85,19 @@ class PerjalananDinasPolicy
             return Response::deny(
                 'Anda tidak memiliki akses untuk mencetak Surat Tugas ini.'
             );
+        }
+
+        if ($travel->spt_group_id) {
+            $workflow = SptSrikandiWorkflow::query()
+                ->where('spt_group_id', $travel->spt_group_id)
+                ->first();
+
+            if ($workflow && (
+                $workflow->status !== SptSrikandiWorkflow::STATUS_PUBLISHED
+                || $travel->status === PerjalananDinas::STATUS_DRAFT
+            )) {
+                return Response::denyAsNotFound();
+            }
         }
 
 

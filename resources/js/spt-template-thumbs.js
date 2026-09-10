@@ -1,6 +1,7 @@
 import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 let pdfJsPromise = null;
+let thumbnailQueue = Promise.resolve();
 
 const getPdfJs = () => {
     if (!pdfJsPromise) {
@@ -22,9 +23,10 @@ const renderThumb = async (canvas, url) => {
         disableAutoFetch: false,
         disableStream: false,
     });
+    let doc = null;
 
     try {
-        const doc = await loadingTask.promise;
+        doc = await loadingTask.promise;
         const page = await doc.getPage(1);
         const desiredWidth = canvas.clientWidth || 220;
         const viewport = page.getViewport({ scale: 1 });
@@ -41,7 +43,24 @@ const renderThumb = async (canvas, url) => {
         await page.render({ canvasContext: ctx, viewport: scaled }).promise;
     } catch {
         canvas.closest(".spt-thumb-wrap")?.classList.add("spt-thumb-failed");
+    } finally {
+        if (doc) {
+            await doc.destroy();
+        } else {
+            await loadingTask.destroy();
+        }
     }
+};
+
+const queueThumb = (canvas) => {
+    thumbnailQueue = thumbnailQueue
+        .catch(() => undefined)
+        .then(() => renderThumb(canvas, canvas.dataset.sptTemplateThumb))
+        .catch(() => {
+            canvas
+                .closest(".spt-thumb-wrap")
+                ?.classList.add("spt-thumb-failed");
+        });
 };
 
 const init = () => {
@@ -54,16 +73,14 @@ const init = () => {
                 entries.forEach((entry) => {
                     if (!entry.isIntersecting) return;
                     observer.unobserve(entry.target);
-                    renderThumb(entry.target, entry.target.dataset.sptTemplateThumb);
+                    queueThumb(entry.target);
                 });
             },
             { rootMargin: "200px 0px" },
         );
         items.forEach((canvas) => observer.observe(canvas));
     } else {
-        items.forEach((canvas) =>
-            renderThumb(canvas, canvas.dataset.sptTemplateThumb),
-        );
+        items.forEach(queueThumb);
     }
 };
 

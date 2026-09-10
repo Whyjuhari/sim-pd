@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PerjalananDinas;
+use App\Models\SptSrikandiWorkflow;
 use App\Models\User;
 
 class NavigationWorkCount
@@ -19,6 +20,11 @@ class NavigationWorkCount
             User::ROLE_VERIFIER => PerjalananDinas::query()
                 ->where('status', PerjalananDinas::STATUS_PENDING)
                 ->count(),
+            User::ROLE_OFFICER => SptSrikandiWorkflow::query()
+                ->whereIn('status', [
+                    SptSrikandiWorkflow::STATUS_WAITING,
+                    SptSrikandiWorkflow::STATUS_UPLOADED,
+                ])->count(),
             default => 0,
         };
     }

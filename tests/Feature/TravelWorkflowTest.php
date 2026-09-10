@@ -77,7 +77,7 @@ class TravelWorkflowTest extends TestCase
 
         $previewScript = file_get_contents(resource_path('js/document-preview.js'));
         $this->assertStringContainsString("credentials: 'same-origin'", $previewScript);
-        $this->assertStringContainsString("Accept: 'application/pdf'", $previewScript);
+        $this->assertStringContainsString("Accept: formData ? 'application/json, application/pdf' : 'application/pdf'", $previewScript);
         $this->assertStringContainsString('URL.createObjectURL(blob)', $previewScript);
         $this->assertStringContainsString('URL.revokeObjectURL(activeObjectUrl)', $previewScript);
         $this->assertStringContainsString('usesPdfJsViewer()', $previewScript);

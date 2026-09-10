@@ -63,6 +63,47 @@
         </div>
     </section>
 
+    @php($selectedDipa = $dipaSettings->firstWhere('fiscal_year', $pmkReadiness['year']))
+    <section class="card shadow-sm mb-4" id="dipa-settings">
+        <div class="card-header bg-white">
+            <h2 class="section-title mb-0"><span class="section-title-icon"><i
+                        class="bi bi-file-earmark-text"></i></span> DIPA TA {{ $pmkReadiness['year'] }}</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST"
+                action="{{ route('program.dipa.update', ['fiscalYear' => $pmkReadiness['year']]) }}">
+                @csrf
+                @method('PUT')
+                <div class="row g-3 align-items-end">
+                    <div class="col-lg-7">
+                        <label for="dipa_document_number" class="form-label fw-semibold">Nomor DIPA</label>
+                        <input id="dipa_document_number" name="document_number" type="text" class="form-control"
+                            maxlength="100" value="{{ old('document_number', $selectedDipa?->document_number) }}" required>
+                    </div>
+                    <div class="col-sm-7 col-lg-3">
+                        <label for="dipa_document_date" class="form-label fw-semibold">Tanggal DIPA</label>
+                        <input id="dipa_document_date" name="document_date" type="date" class="form-control"
+                            value="{{ old('document_date', $selectedDipa?->document_date?->format('Y-m-d')) }}" required>
+                    </div>
+                    <div class="col-sm-5 col-lg-2 d-grid">
+                        <button class="btn btn-primary"><i class="bi bi-check-circle"></i> Simpan</button>
+                    </div>
+                </div>
+                @error('document_number')
+                    <div class="text-danger small mt-2">{{ $message }}</div>
+                @enderror
+                @error('document_date')
+                    <div class="text-danger small mt-2">{{ $message }}</div>
+                @enderror
+                @if ($selectedDipa)
+                    <div class="form-text mt-2">Terakhir diperbarui
+                        {{ $selectedDipa->updated_at?->format('d/m/Y H:i') }} oleh
+                        {{ $selectedDipa->updater?->nama_lengkap ?? 'pengguna yang sudah tidak tersedia' }}.</div>
+                @endif
+            </form>
+        </div>
+    </section>
+
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h2 class="section-title mb-0"><span class="section-title-icon"><i

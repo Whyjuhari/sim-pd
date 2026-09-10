@@ -5,12 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\MasterTarif;
 use App\Models\BudgetAccount;
 use App\Models\DailyAllowanceRate;
+use App\Models\DipaSetting;
 use App\Models\PerjalananDinas;
+use App\Models\SptSrikandiWorkflow;
 use App\Models\SptTemplate;
 use App\Models\User;
 use App\Services\TravelCostCalculator;
 use App\Services\Documents\DocumentCachePrewarmer;
 use App\Services\Documents\TravelPdfDocumentService;
+use App\Services\Uploads\SptSrikandiDocumentStorage;
+use App\Support\SptTemplateVariant;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
@@ -27,13 +31,14 @@ class TravelOrderController extends Controller
 {
     public function __construct(
         private readonly TravelCostCalculator $calculator,
-        private readonly DocumentCachePrewarmer $documentPrewarmer
+        private readonly DocumentCachePrewarmer $documentPrewarmer,
+        private readonly SptSrikandiDocumentStorage $srikandiStorage,
     ) {}
     public function create(Request $request): View
     {
-        $selectedTemplateId = $this->resolveSelectedTemplateId($request);
+        $selectedTemplate = $this->resolveSelectedTemplate($request);
 
-        if ($selectedTemplateId === null) {
+        if ($selectedTemplate === null) {
             return view('travel.template-select', [
                 'templates' => SptTemplate::query()
                     ->withCount('perjalananDinas')
@@ -41,13 +46,15 @@ class TravelOrderController extends Controller
                     ->orderByDesc('is_default')
                     ->orderBy('nama')
                     ->get(),
+                'builtInTemplates' => SptTemplateVariant::all(),
             ]);
         }
 
-        return view('travel.create', $this->createFormData($selectedTemplateId));
+        return view('travel.create', $this->createFormData($selectedTemplate));
     }
 
-    private function resolveSelectedTemplateId(Request $request): ?int
+    /** @return array{type: string, id: ?int, variant: ?string, label: string, uses_memo: bool, uses_dipa: bool}|null */
+    private function resolveSelectedTemplate(Request $request): ?array
     {
         $raw = trim((string) $request->query('template', ''));
 
@@ -56,26 +63,62 @@ class TravelOrderController extends Controller
         }
 
         if ($raw === 'system') {
-            return 0;
+            return [
+                'type' => 'system',
+                'id' => null,
+                'variant' => null,
+                'label' => 'Template Sistem (Legacy)',
+                'uses_memo' => true,
+                'uses_dipa' => false,
+            ];
+        }
+
+        if (str_starts_with($raw, 'variant:')) {
+            $key = substr($raw, strlen('variant:'));
+            $variant = SptTemplateVariant::get($key);
+
+            if (! $variant) {
+                return null;
+            }
+
+            return [
+                'type' => 'variant',
+                'id' => null,
+                'variant' => $key,
+                'label' => $variant['label'],
+                'uses_memo' => $variant['uses_memo'],
+                'uses_dipa' => $variant['uses_dipa'],
+            ];
         }
 
         if (! ctype_digit($raw)) {
             return null;
         }
 
-        $exists = SptTemplate::query()
+        $template = SptTemplate::query()
             ->whereKey((int) $raw)
             ->where('is_active', true)
-            ->exists();
+            ->first();
 
-        return $exists ? (int) $raw : null;
+        if (! $template) {
+            return null;
+        }
+
+        return [
+            'type' => 'custom',
+            'id' => (int) $template->id,
+            'variant' => null,
+            'label' => $template->nama,
+            'uses_memo' => true,
+            'uses_dipa' => false,
+        ];
     }
 
     /** @return array<string, mixed> */
-    private function createFormData(?int $selectedTemplateId): array
+    private function createFormData(array $selectedTemplate): array
     {
         return [
-            'selectedTemplateId' => $selectedTemplateId,
+            'selectedTemplate' => $selectedTemplate,
             'employees' => User::query()
                 ->where('role', User::ROLE_USER)
                 ->orderBy('nama_lengkap')
@@ -91,7 +134,6 @@ class TravelOrderController extends Controller
                 ->orderBy('code')
                 ->get(),
             'dailyAllowanceCategories' => DailyAllowanceRate::categoryLabels(),
-            'sptTemplates' => $this->selectableTemplates(),
         ];
     }
 
@@ -109,20 +151,36 @@ class TravelOrderController extends Controller
         $sptGroupId =
             (string) Str::uuid();
 
+        $dipaSnapshot = $this->resolveDipaSnapshot($data);
+        $internalReference = $this->generateInternalReference((int) CarbonImmutable::parse($data['tgl_berangkat'])->year);
+
         $commonData =
             $this->commonTravelData(
                 $data,
                 $days,
                 $estimate,
-                $rates
+                $rates,
+                $dipaSnapshot,
+                [
+                    'spt_internal_reference' => $internalReference,
+                    'spt_number_mode' => $data['spt_number_mode'],
+                    'spt_external_number' => null,
+                    'spt_external_number_recorded_at' => null,
+                    'spt_external_number_recorded_by' => null,
+                ]
             );
+
+        $initialStatus = $data['spt_number_mode'] === PerjalananDinas::NUMBER_MODE_EXTERNAL
+            ? PerjalananDinas::STATUS_DRAFT
+            : PerjalananDinas::STATUS_READY;
 
         DB::transaction(
             function () use (
                 $data,
                 $sptGroupId,
                 $commonData,
-                $request
+                $request,
+                $initialStatus
             ): void {
                 foreach (
                     $data['user_ids']
@@ -142,8 +200,15 @@ class TravelOrderController extends Controller
                             ...$commonData,
 
                             'status'
-                            => PerjalananDinas::STATUS_READY,
+                            => $initialStatus,
                         ]);
+                }
+
+                if ($data['spt_number_mode'] === PerjalananDinas::NUMBER_MODE_EXTERNAL) {
+                    SptSrikandiWorkflow::query()->create([
+                        'spt_group_id' => $sptGroupId,
+                        'status' => SptSrikandiWorkflow::STATUS_DRAFT,
+                    ]);
                 }
             }
         );
@@ -221,14 +286,101 @@ class TravelOrderController extends Controller
                 $travels
             );
 
+        $workflow = SptSrikandiWorkflow::query()
+            ->where('spt_group_id', $sptGroupId)
+            ->first();
+
         return view(
             'travel.show',
             [
                 'travel' => $travel,
                 'travels' => $travels,
                 'canModify' => $canModify,
+                'srikandiWorkflow' => $workflow,
+                'canRecordSrikandiNumber' => ! $workflow
+                    && $travel->spt_number_mode === PerjalananDinas::NUMBER_MODE_EXTERNAL
+                    && empty($travel->spt_external_number),
             ]
         );
+    }
+
+    public function recordSrikandiNumber(Request $request, string $sptGroupId): RedirectResponse
+    {
+        $data = $request->validate([
+            'spt_external_number' => [
+                'required',
+                'string',
+                'max:50',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (trim((string) $value) === PerjalananDinas::NUMBER_PLACEHOLDER) {
+                        $fail('Nomor Srikandi tidak boleh menggunakan parameter nomor naskah.');
+                    }
+                },
+            ],
+        ]);
+        $externalNumber = trim($data['spt_external_number']);
+
+        DB::transaction(function () use ($sptGroupId, $externalNumber, $request): void {
+            $workflow = SptSrikandiWorkflow::query()
+                ->where('spt_group_id', $sptGroupId)
+                ->lockForUpdate()
+                ->first();
+            if ($workflow) {
+                throw ValidationException::withMessages([
+                    'spt_external_number' => 'Nomor untuk alur Srikandi baru dicatat bersama unggahan PDF resmi.',
+                ]);
+            }
+
+            $travels = PerjalananDinas::query()
+                ->where('spt_group_id', $sptGroupId)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            abort_if($travels->isEmpty(), 404, 'Data Surat Tugas tidak ditemukan.');
+
+            if (! $travels->every(fn (PerjalananDinas $travel): bool =>
+                $travel->spt_number_mode === PerjalananDinas::NUMBER_MODE_EXTERNAL
+                && empty($travel->spt_external_number)
+            )) {
+                throw ValidationException::withMessages([
+                    'spt_external_number' => 'Nomor Srikandi untuk SPT ini sudah pernah dicatat.',
+                ]);
+            }
+
+            $alreadyUsed = PerjalananDinas::query()
+                ->where(function ($query) use ($externalNumber): void {
+                    $query->where('spt_external_number', $externalNumber)
+                        ->orWhere(function ($query) use ($externalNumber): void {
+                            $query->where('spt_number_mode', PerjalananDinas::NUMBER_MODE_MANUAL)
+                                ->where('no_spt', $externalNumber);
+                        });
+                })
+                ->where(function ($query) use ($sptGroupId): void {
+                    $query->whereNull('spt_group_id')
+                        ->orWhere('spt_group_id', '!=', $sptGroupId);
+                })
+                ->lockForUpdate()
+                ->exists();
+
+            if ($alreadyUsed) {
+                throw ValidationException::withMessages([
+                    'spt_external_number' => 'Nomor Srikandi sudah digunakan oleh SPT lain.',
+                ]);
+            }
+
+            PerjalananDinas::query()
+                ->where('spt_group_id', $sptGroupId)
+                ->update([
+                    'spt_external_number' => $externalNumber,
+                    'spt_external_number_recorded_at' => now(),
+                    'spt_external_number_recorded_by' => (int) $request->user()->id,
+                ]);
+        });
+
+        return redirect()
+            ->route('travel-orders.show', ['sptGroupId' => $sptGroupId])
+            ->with('success', 'Nomor Srikandi berhasil dicatat tanpa mengubah isi Surat Tugas.');
     }
 
 
@@ -294,8 +446,14 @@ class TravelOrderController extends Controller
                 'dailyAllowanceCategories'
                 => DailyAllowanceRate::categoryLabels(),
 
-                'sptTemplates'
-                => $this->selectableTemplates(),
+                'templateLabel'
+                => $travels->first()->sptTemplateLabel(),
+
+                'usesMemo'
+                => $travels->first()->usesMemoTemplate(),
+
+                'usesDipa'
+                => $travels->first()->usesDipaTemplate(),
             ]
         );
     }
@@ -308,10 +466,7 @@ class TravelOrderController extends Controller
     ): RedirectResponse {
         $existingTravel = $this->groupTravels($sptGroupId)->first();
 
-        $data =
-            $this->validatedData(
-                $request
-            );
+        $data = $this->validatedData($request, $existingTravel);
 
         /*
          * Hitung ulang karena Officer mungkin mengubah:
@@ -326,12 +481,22 @@ class TravelOrderController extends Controller
                 $existingTravel
             );
 
+        $dipaSnapshot = $this->resolveDipaSnapshot($data, $existingTravel);
+
         $commonData =
             $this->commonTravelData(
                 $data,
                 $days,
                 $estimate,
-                $rates
+                $rates,
+                $dipaSnapshot,
+                [
+                    'spt_internal_reference' => $existingTravel->spt_internal_reference,
+                    'spt_number_mode' => $existingTravel->spt_number_mode,
+                    'spt_external_number' => $existingTravel->spt_external_number,
+                    'spt_external_number_recorded_at' => $existingTravel->spt_external_number_recorded_at,
+                    'spt_external_number_recorded_by' => $existingTravel->spt_external_number_recorded_by,
+                ]
             );
 
         /*
@@ -363,6 +528,11 @@ class TravelOrderController extends Controller
                 $requestedUserIds,
                 $commonData
             ): void {
+                SptSrikandiWorkflow::query()
+                    ->where('spt_group_id', $sptGroupId)
+                    ->lockForUpdate()
+                    ->first();
+
                 /*
                  * lockForUpdate mencegah record ini berubah
                  * dari request lain ketika sedang kita edit.
@@ -522,7 +692,7 @@ class TravelOrderController extends Controller
                             ...$commonData,
 
                             'status'
-                            => PerjalananDinas::STATUS_READY,
+                            => $travels->first()->status,
                         ]);
                 }
             }
@@ -562,10 +732,18 @@ class TravelOrderController extends Controller
     public function destroy(
         string $sptGroupId
     ): RedirectResponse {
+        $workflowFiles = [];
+
         DB::transaction(
             function () use (
-                $sptGroupId
+                $sptGroupId,
+                &$workflowFiles,
             ): void {
+                $workflow = SptSrikandiWorkflow::query()
+                    ->where('spt_group_id', $sptGroupId)
+                    ->lockForUpdate()
+                    ->first();
+
                 /*
                  * Ambil dan kunci seluruh anggota SPT.
                  */
@@ -596,6 +774,14 @@ class TravelOrderController extends Controller
                     ]);
                 }
 
+                if ($workflow) {
+                    $workflowFiles = [
+                        $workflow->draft_pdf_path,
+                        $workflow->official_pdf_path,
+                    ];
+                    $workflow->delete();
+                }
+
                 /*
                  * Hapus SEMUA transaksi anggota SPT.
                  *
@@ -608,6 +794,11 @@ class TravelOrderController extends Controller
                     )
                     ->delete();
             }
+        );
+
+        $this->srikandiStorage->deleteWorkflowFiles(
+            $workflowFiles[0] ?? null,
+            $workflowFiles[1] ?? null,
         );
 
         return redirect()
@@ -626,13 +817,47 @@ class TravelOrderController extends Controller
      */
 
     private function validatedData(
-        Request $request
+        Request $request,
+        ?PerjalananDinas $existingTravel = null
     ): array {
-        return $request->validate([
-            'no_spt' => [
+        $numberMode = trim((string) $request->input('spt_number_mode', ''));
+        if ($numberMode === '') {
+            $numberMode = $request->filled('no_spt')
+                ? PerjalananDinas::NUMBER_MODE_MANUAL
+                : PerjalananDinas::NUMBER_MODE_EXTERNAL;
+        }
+        if ($existingTravel) {
+            $numberMode = $existingTravel->spt_number_mode ?: PerjalananDinas::NUMBER_MODE_MANUAL;
+        }
+        $request->merge(['spt_number_mode' => $numberMode]);
+
+        $variantKey = $existingTravel?->spt_template_variant
+            ?: trim((string) $request->input('spt_template_variant', ''));
+        $variant = SptTemplateVariant::get($variantKey);
+        $usesMemo = $existingTravel
+            ? $existingTravel->usesMemoTemplate()
+            : ($variant ? $variant['uses_memo'] : true);
+
+        $data = $request->validate([
+            'spt_number_mode' => [
                 'required',
+                Rule::in([
+                    PerjalananDinas::NUMBER_MODE_EXTERNAL,
+                    PerjalananDinas::NUMBER_MODE_MANUAL,
+                ]),
+            ],
+
+            'no_spt' => [
+                Rule::requiredIf($numberMode === PerjalananDinas::NUMBER_MODE_MANUAL),
+                'nullable',
                 'string',
                 'max:50',
+                function (string $attribute, mixed $value, \Closure $fail) use ($numberMode): void {
+                    if ($numberMode === PerjalananDinas::NUMBER_MODE_MANUAL
+                        && trim((string) $value) === PerjalananDinas::NUMBER_PLACEHOLDER) {
+                        $fail('Nomor manual tidak boleh menggunakan parameter nomor naskah.');
+                    }
+                },
             ],
 
             'menimbang' => [
@@ -642,19 +867,22 @@ class TravelOrderController extends Controller
             ],
 
             'no_memo' => [
-                'required',
+                Rule::requiredIf($usesMemo),
+                'nullable',
                 'string',
                 'max:255',
             ],
 
             'perihal_memo' => [
-                'required',
+                Rule::requiredIf($usesMemo),
+                'nullable',
                 'string',
                 'max:255',
             ],
 
             'tgl_memo' => [
-                'required',
+                Rule::requiredIf($usesMemo),
+                'nullable',
                 'date',
             ],
 
@@ -740,6 +968,12 @@ class TravelOrderController extends Controller
                 ),
             ],
 
+            'spt_template_variant' => [
+                'nullable',
+                'string',
+                Rule::in(array_keys(SptTemplateVariant::all())),
+            ],
+
             'akun_anggaran' => [
                 'required',
                 'string',
@@ -749,6 +983,35 @@ class TravelOrderController extends Controller
                 ),
             ],
         ]);
+
+        if (! empty($data['spt_template_id']) && ! empty($data['spt_template_variant'])) {
+            throw ValidationException::withMessages([
+                'spt_template_variant' => 'Pilih salah satu jenis template SPT.',
+            ]);
+        }
+
+        if ($existingTravel) {
+            $data['spt_template_id'] = $existingTravel->spt_template_id;
+            $data['spt_template_variant'] = $existingTravel->spt_template_variant;
+            $data['spt_number_mode'] = $numberMode;
+            $data['no_spt'] = $existingTravel->spt_number_mode === PerjalananDinas::NUMBER_MODE_EXTERNAL
+                ? $existingTravel->no_spt
+                : trim((string) $data['no_spt']);
+        } else {
+            $data['spt_template_id'] = $data['spt_template_id'] ?? null;
+            $data['spt_template_variant'] = $data['spt_template_variant'] ?? null;
+            $data['no_spt'] = $numberMode === PerjalananDinas::NUMBER_MODE_EXTERNAL
+                ? PerjalananDinas::NUMBER_PLACEHOLDER
+                : trim((string) $data['no_spt']);
+        }
+
+        if (! $usesMemo) {
+            $data['no_memo'] = null;
+            $data['perihal_memo'] = null;
+            $data['tgl_memo'] = null;
+        }
+
+        return $data;
     }
 
 
@@ -924,13 +1187,20 @@ class TravelOrderController extends Controller
         array $data,
         int $days,
         float $estimate,
-        array $rates
+        array $rates,
+        ?array $dipaSnapshot = null,
+        array $numbering = []
     ): array {
         return [
             'spt_template_id'
             => isset($data['spt_template_id']) && $data['spt_template_id'] !== ''
                 ? (int) $data['spt_template_id']
                 : null,
+
+            'spt_template_variant'
+            => $data['spt_template_variant'] ?: null,
+
+            ...$numbering,
 
             'no_spt'
             => $data['no_spt'],
@@ -939,13 +1209,25 @@ class TravelOrderController extends Controller
             => $data['menimbang'],
 
             'no_memo'
-            => $data['no_memo'],
+            => $data['no_memo'] ?? null,
 
             'perihal_memo'
-            => $data['perihal_memo'],
+            => $data['perihal_memo'] ?? null,
 
             'tgl_memo'
-            => $data['tgl_memo'],
+            => $data['tgl_memo'] ?? null,
+
+            'dipa_setting_id'
+            => $dipaSnapshot['dipa_setting_id'] ?? null,
+
+            'dipa_fiscal_year_snapshot'
+            => $dipaSnapshot['dipa_fiscal_year_snapshot'] ?? null,
+
+            'dipa_number_snapshot'
+            => $dipaSnapshot['dipa_number_snapshot'] ?? null,
+
+            'dipa_date_snapshot'
+            => $dipaSnapshot['dipa_date_snapshot'] ?? null,
 
             'maksud_perjalanan'
             => $data['maksud_perjalanan'],
@@ -1076,13 +1358,54 @@ class TravelOrderController extends Controller
      * =====================================================
      */
 
-    private function selectableTemplates(): EloquentCollection
+    /** @return array{dipa_setting_id: ?int, dipa_fiscal_year_snapshot: int, dipa_number_snapshot: string, dipa_date_snapshot: string}|null */
+    private function resolveDipaSnapshot(array $data, ?PerjalananDinas $existingTravel = null): ?array
     {
-        return SptTemplate::query()
-            ->where('is_active', true)
-            ->orderByDesc('is_default')
-            ->orderBy('nama')
-            ->get();
+        $variant = SptTemplateVariant::get($data['spt_template_variant'] ?? null);
+
+        if (! ($variant['uses_dipa'] ?? false)) {
+            return null;
+        }
+
+        $fiscalYear = (int) CarbonImmutable::parse($data['tgl_berangkat'])->year;
+
+        if ($existingTravel
+            && (int) $existingTravel->dipa_fiscal_year_snapshot === $fiscalYear
+            && $existingTravel->dipa_number_snapshot
+            && $existingTravel->dipa_date_snapshot) {
+            return [
+                'dipa_setting_id' => $existingTravel->dipa_setting_id
+                    ? (int) $existingTravel->dipa_setting_id
+                    : null,
+                'dipa_fiscal_year_snapshot' => $fiscalYear,
+                'dipa_number_snapshot' => (string) $existingTravel->dipa_number_snapshot,
+                'dipa_date_snapshot' => $existingTravel->dipa_date_snapshot->format('Y-m-d'),
+            ];
+        }
+
+        $setting = DipaSetting::query()->where('fiscal_year', $fiscalYear)->first();
+        if (! $setting) {
+            throw ValidationException::withMessages([
+                'tgl_berangkat' => "Konfigurasi DIPA TA {$fiscalYear} belum tersedia. Hubungi Program sebelum menyimpan SPT.",
+            ]);
+        }
+
+        return [
+            'dipa_setting_id' => (int) $setting->id,
+            'dipa_fiscal_year_snapshot' => $fiscalYear,
+            'dipa_number_snapshot' => $setting->document_number,
+            'dipa_date_snapshot' => $setting->document_date->format('Y-m-d'),
+        ];
+    }
+
+    private function generateInternalReference(int $year): string
+    {
+        do {
+            $suffix = strtoupper(substr(str_replace('-', '', (string) Str::uuid()), 0, 8));
+            $reference = "REF-SPT/{$year}/{$suffix}";
+        } while (PerjalananDinas::query()->where('spt_internal_reference', $reference)->exists());
+
+        return $reference;
     }
 
     private function groupTravels(
@@ -1090,7 +1413,7 @@ class TravelOrderController extends Controller
     ): EloquentCollection {
         $travels =
             PerjalananDinas::query()
-            ->with('pegawai')
+            ->with(['pegawai', 'sptTemplate'])
             ->where(
                 'spt_group_id',
                 $sptGroupId
@@ -1123,12 +1446,21 @@ class TravelOrderController extends Controller
          * Satu saja sudah pending/approved/rejected,
          * seluruh SPT kita kunci.
          */
-        return $travels->every(
-            fn(
-                PerjalananDinas $travel
-            ): bool =>
-            $travel->status
-                === PerjalananDinas::STATUS_READY
-        );
+        $groupId = $travels->first()?->spt_group_id;
+        if ($groupId) {
+            $workflow = SptSrikandiWorkflow::query()
+                ->where('spt_group_id', $groupId)
+                ->first();
+
+            if ($workflow && $workflow->status !== SptSrikandiWorkflow::STATUS_DRAFT) {
+                return false;
+            }
+        }
+
+        return $travels->every(fn (PerjalananDinas $travel): bool => in_array(
+            $travel->status,
+            [PerjalananDinas::STATUS_DRAFT, PerjalananDinas::STATUS_READY],
+            true
+        ));
     }
 }

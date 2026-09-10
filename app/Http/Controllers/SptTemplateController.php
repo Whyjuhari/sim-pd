@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\SptTemplate;
+use App\Services\Documents\GeneratedPdfCache;
 use App\Services\Documents\PdfConverter;
+use App\Support\SptTemplateVariant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -201,10 +203,64 @@ class SptTemplateController extends Controller
             abort(404, 'Thumbnail tidak tersedia.');
         }
 
-        return response()->file($diskPath, [
+        $response = response()->file($diskPath, [
             'Content-Type' => 'application/pdf',
-            'Cache-Control' => 'private, max-age=86400',
+            'Content-Disposition' => 'inline',
+            'X-Content-Type-Options' => 'nosniff',
         ]);
+        $response->setPrivate();
+        $response->setMaxAge(86400);
+
+        return $response;
+    }
+
+    public function builtInThumbnail(string $variant, GeneratedPdfCache $cache)
+    {
+        abort_unless(SptTemplateVariant::exists($variant), 404, 'Template bawaan tidak ditemukan.');
+
+        $template = SptTemplateVariant::get($variant);
+        $templatePath = SptTemplateVariant::path($variant);
+
+        abort_unless(is_file($templatePath), 404, 'File template bawaan tidak ditemukan.');
+
+        try {
+            $pdfPath = $cache->remember(
+                'spt-template-thumbnail',
+                'built-in-'.$variant,
+                [
+                    'variant' => $variant,
+                    'label' => $template['label'] ?? $variant,
+                ],
+                [
+                    $templatePath,
+                    (new \ReflectionClass(PdfConverter::class))->getFileName() ?: null,
+                ],
+                function () use ($templatePath): string {
+                    $converter = new PdfConverter(
+                        config('sim_pd.documents.libreoffice.binary'),
+                        (int) config('sim_pd.documents.libreoffice.timeout', 60),
+                    );
+
+                    return $converter->convert(
+                        $templatePath,
+                        config('sim_pd.documents.pdf_dir'),
+                    );
+                },
+            );
+        } catch (Throwable $exception) {
+            report($exception);
+            abort(404, 'Pratinjau template bawaan belum tersedia.');
+        }
+
+        $response = response()->file($pdfPath, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+        $response->setPrivate();
+        $response->setMaxAge(86400);
+
+        return $response;
     }
 
     private function generateThumbnailAfterResponse(string $uuid): void

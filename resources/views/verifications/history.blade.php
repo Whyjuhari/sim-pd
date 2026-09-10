@@ -59,7 +59,7 @@
                         @php($travel = $history->perjalananDinas)
                         <tr>
                             <td>{{ $history->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
-                            <td><strong>{{ $travel?->no_spt ?? '-' }}</strong><br><small
+                            <td><strong>{{ $travel?->sptOperationalReference() ?? '-' }}</strong><br><small
                                     class="text-muted">{{ $travel?->pegawai?->nama_lengkap ?? 'Pegawai tidak tersedia' }} ·
                                     {{ $travel?->kota_tujuan ?? '-' }}</small></td>
                             <td><x-ui.status-pill :status="$history->to_status" /></td>
@@ -109,7 +109,7 @@
                         <tbody>
                             @foreach ($legacyTravels as $travel)
                                 <tr>
-                                    <td><strong>{{ $travel->no_spt }}</strong><br><small
+                                    <td><strong>{{ $travel->sptOperationalReference() }}</strong><br><small
                                             class="text-muted">{{ $travel->pegawai?->nama_lengkap ?? '-' }} ·
                                             {{ $travel->kota_tujuan }}</small></td>
                                     <td><x-ui.status-pill :status="$travel->status" /></td>

@@ -18,7 +18,8 @@ class PegawaiController extends Controller
         Gate::authorize('printSpt', $travel);
 
         $docxPath = $generator->generate([
-            'no_spt' => $travel->no_spt,
+            'no_spt' => $travel->sptOperationalReference(),
+            'spt_document_number' => $travel->sptDocumentNumber(),
             'menimbang' => $travel->menimbang,
             'no_memo' => $travel->no_memo,
             'perihal_memo' => $travel->perihal_memo,
@@ -35,7 +36,7 @@ class PegawaiController extends Controller
 
         $pdfPath = $converter->convert($docxPath, config('sim_pd.documents.pdf_dir'));
 
-        return response()->download($pdfPath, "SPT_{$travel->no_spt}.pdf")
+        return response()->download($pdfPath, 'SPT_'.$travel->sptOperationalReference().'.pdf')
             ->deleteFileAfterSend(true);
     }
 }

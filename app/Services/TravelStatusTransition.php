@@ -10,6 +10,7 @@ use DomainException;
 class TravelStatusTransition
 {
     private const ALLOWED = [
+        PerjalananDinas::STATUS_DRAFT => [PerjalananDinas::STATUS_READY],
         PerjalananDinas::STATUS_READY => [PerjalananDinas::STATUS_PENDING],
         PerjalananDinas::STATUS_PENDING => [
             PerjalananDinas::STATUS_APPROVED,

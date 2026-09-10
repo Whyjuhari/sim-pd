@@ -11,7 +11,7 @@
 @section('content')
     <div class="card shadow-sm">
         <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <h5 class="mb-0 fw-bold text-identity">Data Pegawai Perjadin</h5>
+            <h5 class="mb-0 fw-bold text-identity">Data Pegawai</h5>
             <form method="GET" class="input-group" style="max-width:340px">
                 <label for="employee-search" class="visually-hidden">Cari pegawai</label>
                 <input id="employee-search" name="q" value="{{ $search }}" class="form-control form-control-sm"
@@ -56,17 +56,14 @@
                                 @endif
                             </td>
                             <td class="d-flex gap-1">
-
                                 <a href="{{ route('employees.edit', ['id' => $employee->id]) }}"
                                     class="btn btn-warning btn-sm text-white"><i class="bi bi-pencil-square"></i></a>
-                                <form method="post" action="{{ route('employees.destroy') }}"
-                                    data-sim-confirm
+                                <form method="post" action="{{ route('employees.destroy') }}" data-sim-confirm
                                     data-sim-confirm-title="Hapus pegawai?"
                                     data-sim-confirm-text="Data pegawai dan data terkait yang diizinkan sistem akan dihapus. Tindakan ini tidak dapat dibatalkan."
-                                    data-sim-confirm-button="Ya, hapus pegawai"
-                                    data-sim-confirm-tone="danger">@csrf<input type="hidden"
-                                        name="id" value="{{ $employee->id }}"><button class="btn btn-danger btn-sm"><i
-                                            class="bi bi-trash"></i></button></form>
+                                    data-sim-confirm-button="Ya, hapus pegawai" data-sim-confirm-tone="danger">@csrf<input
+                                        type="hidden" name="id" value="{{ $employee->id }}"><button
+                                        class="btn btn-danger btn-sm"><i class="bi bi-trash"></i></button></form>
                                 <a href="{{ route('employees.show', ['id' => $employee->id]) }}"
                                     class="btn btn-primary btn-sm"><i class="bi bi-person-lines-fill"></i> Detail</a>
                             </td>

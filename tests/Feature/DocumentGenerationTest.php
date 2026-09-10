@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Repositories\PerjalananDinasRepository;
 use App\Services\Documents\SuratTugasDocxGenerator;
 use App\Services\Documents\TravelPdfDocumentService;
+use App\Support\SptTemplateVariant;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -112,6 +113,7 @@ class DocumentGenerationTest extends TestCase
             'lama_hari' => 3,
             'angkutan' => 'Pesawat Udara',
             'akun_anggaran' => '4053.PDI.002.054.B.524111',
+            'spt_template_variant' => SptTemplateVariant::REGULATIONS,
             'status' => PerjalananDinas::STATUS_READY,
         ]));
 
@@ -121,7 +123,10 @@ class DocumentGenerationTest extends TestCase
 
         $documents = config('sim_pd.documents');
         $docxPath = (new SuratTugasDocxGenerator(
-            $documents['templates']['surat_tugas'],
+            SptTemplateVariant::pathForEmployeeCount(
+                SptTemplateVariant::REGULATIONS,
+                count($data['pegawai_list']),
+            ),
             $documents['temporary_dir'],
         ))->generate($data);
         $documentXml = $this->readDocxPart($docxPath, 'word/document.xml');
@@ -130,10 +135,68 @@ class DocumentGenerationTest extends TestCase
         foreach ($employees as $employee) {
             $this->assertStringContainsString($employee->nama_lengkap, $plainText);
             $this->assertStringContainsString($employee->nip, $plainText);
+            $this->assertSame(1, substr_count($plainText, $employee->nama_lengkap));
         }
 
+        $this->assertStringContainsString('Nama-nama Terlampir', $plainText);
+        $this->assertStringContainsString('DAFTAR PEJABAT/PEGAWAI YANG DIBERI TUGAS', $plainText);
         $this->assertStringNotContainsString('${nomor_pegawai}', $plainText);
         $this->assertStringNotContainsString('${nama_pegawai}', $plainText);
+        $generatedDocument = new DOMDocument;
+        $this->assertTrue($generatedDocument->loadXML($documentXml));
+        $generatedXpath = new DOMXPath($generatedDocument);
+        $generatedXpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        $this->assertSame(
+            1,
+            $generatedXpath->query(
+                '/w:document/w:body/w:tbl[1]//w:r[w:t[.="Nama-nama Terlampir"]]'
+                .'/w:rPr[w:sz[@w:val="24"]]'
+                .'/w:rFonts[@w:ascii="Arial" and @w:hAnsi="Arial" and @w:eastAsia="Arial" and @w:cs="Arial"]'
+            )->length,
+            'Teks rujukan lampiran harus mengikuti Arial 12 pt pada isi utama SPT.'
+        );
+
+        $appendixTables = $generatedXpath->query(
+            '/w:document/w:body/w:tbl[.//w:t[.="NIP/NIK"] and .//w:t[.="JABATAN"]]'
+        );
+        $this->assertSame(1, $appendixTables->length);
+        $appendixTable = $appendixTables->item(0);
+        $this->assertNotNull($appendixTable);
+        $appendixCells = $generatedXpath->query('./w:tr/w:tc', $appendixTable);
+        $this->assertSame(20, $appendixCells->length);
+
+        foreach ($appendixCells as $appendixCell) {
+            $this->assertSame(
+                4,
+                $generatedXpath->query(
+                    './w:tcPr/w:tcBorders/*[@w:val="single"]',
+                    $appendixCell,
+                )->length,
+                'Setiap sel lampiran harus memiliki border eksplisit untuk kompatibilitas LibreOffice.'
+            );
+        }
+
+        $this->assertSame(
+            0,
+            $generatedXpath->query(
+                './/w:r[w:t and not(w:rPr/w:sz[@w:val="21"])]',
+                $appendixTable,
+            )->length,
+            'Seluruh teks tabel pegawai harus konsisten pada 10,5 pt.'
+        );
+        $this->assertSame(
+            1,
+            $generatedXpath->query(
+                '/w:document/w:body/w:tbl[.//w:t[contains(., "VI.")]][.//w:t[contains(., "Catatan")]]'
+                .'/w:tr[w:tc[1]//w:t[contains(., "I.")]]/w:tc[2][.//w:t[contains(., "Ashari")]]'
+                .'//w:t[contains(., "${ttd_pengirim}")]'
+            )->length,
+            'PHPWord harus mempertahankan parameter tanda tangan pengirim di bagian keberangkatan.'
+        );
+        $this->assertSame(
+            0,
+            $generatedXpath->query('/w:document/w:body/w:p//w:t[contains(., "${ttd_pengirim}")]')->length,
+        );
 
         $response = $this->actingAs($officer)->get(
             route('documents.surat-tugas', ['id' => $travels->get(1)->id])
@@ -172,7 +235,11 @@ class DocumentGenerationTest extends TestCase
 
         $outerRows = $xpath->query('./w:tr', $closingTable);
         $this->assertNotFalse($outerRows);
-        $this->assertSame(1, $outerRows->length);
+        $this->assertSame(
+            9,
+            $outerRows->length,
+            'Blok penutup dan delapan baris perjalanan harus berada dalam satu tabel pembungkus.'
+        );
 
         foreach ($outerRows as $row) {
             $this->assertSame(1, $xpath->query('./w:trPr/w:cantSplit', $row)->length);
@@ -204,38 +271,74 @@ class DocumentGenerationTest extends TestCase
         );
         $this->assertNotFalse($finalNameKeepNext);
         $this->assertSame(0, $finalNameKeepNext->length);
-        $this->assertSame(0, $xpath->query('.//wp:anchor', $closingTable)->length);
+        $this->assertSame(
+            0,
+            $xpath->query('./w:tr[1]//wp:anchor', $closingTable)->length,
+            'Konten penutup tidak boleh memakai objek mengambang.'
+        );
 
-        $travelTables = $xpath->query(
-            './following-sibling::*[1][self::w:tbl[.//w:t[contains(., "Berangkat dari")]]]',
+        $senderSignatureParagraphs = $xpath->query(
+            './w:tr[2]/w:tc[2][.//w:t[contains(., "Ashari")]]'
+            .'//w:p[.//w:t[contains(., "${ttd_pengirim}")]]',
             $closingTable,
         );
-        $this->assertNotFalse($travelTables);
-        $this->assertSame(1, $travelTables->length);
+        $this->assertNotFalse($senderSignatureParagraphs);
+        $this->assertSame(
+            1,
+            $senderSignatureParagraphs->length,
+            'Parameter tanda tangan pengirim harus berada di sel Kepala BPVP pada bagian I.'
+        );
+        $senderSignatureParagraph = $senderSignatureParagraphs->item(0);
+        $this->assertNotNull($senderSignatureParagraph);
+        $this->assertSame(1, $xpath->query('./w:pPr/w:keepNext', $senderSignatureParagraph)->length);
+        $this->assertSame(1, $xpath->query('./w:pPr/w:keepLines', $senderSignatureParagraph)->length);
+        $this->assertSame(1, $xpath->query('./w:pPr/w:jc[@w:val="center"]', $senderSignatureParagraph)->length);
+        $this->assertSame(
+            0,
+            $xpath->query('/w:document/w:body/w:p//w:t[contains(., "${ttd_pengirim}")]')->length,
+            'Parameter tanda tangan pengirim tidak boleh berada pada paragraf mengambang di luar tabel.'
+        );
+        $this->assertSame(
+            0,
+            $xpath->query('//w:txbxContent//w:t[contains(., "${ttd_pengirim}")]')->length,
+            'Parameter tanda tangan pengirim tidak boleh lagi memakai textbox.'
+        );
+        $this->assertSame(
+            0,
+            $xpath->query(
+                './w:tr[6]//w:t[contains(., "${ttd_pengirim}")]',
+                $closingTable,
+            )->length,
+            'Parameter tanda tangan pengirim tidak boleh ditempatkan pada blok pemeriksaan PPK.'
+        );
 
-        $travelTable = $travelTables->item(0);
-        $this->assertNotNull($travelTable);
-
-        $travelRows = $xpath->query('./w:tr', $travelTable);
+        $travelRows = $xpath->query(
+            './w:tr[position() > 1]',
+            $closingTable,
+        );
         $this->assertNotFalse($travelRows);
         $this->assertSame(8, $travelRows->length);
+        $this->assertStringContainsString('Berangkat dari', $travelRows->item(0)?->textContent ?? '');
 
         foreach ($travelRows as $row) {
             $this->assertSame(1, $xpath->query('./w:trPr/w:cantSplit', $row)->length);
         }
 
-        $travelParagraphs = $xpath->query('.//w:p', $travelTable);
+        $travelParagraphs = $xpath->query('./w:tr[position() > 1]//w:p', $closingTable);
         $this->assertNotFalse($travelParagraphs);
         $this->assertGreaterThan(1, $travelParagraphs->length);
         $this->assertSame(
             $travelParagraphs->length,
-            $xpath->query('.//w:p[w:pPr/w:keepLines]', $travelTable)->length,
+            $xpath->query(
+                './w:tr[position() > 1]//w:p[w:pPr/w:keepLines]',
+                $closingTable,
+            )->length,
         );
         $this->assertSame(
             $travelParagraphs->length - 1,
             $xpath->query(
-                './/w:p[w:pPr/w:keepNext[not(@w:val) or @w:val != "0"]]',
-                $travelTable,
+                './w:tr[position() > 1]//w:p[w:pPr/w:keepNext[not(@w:val) or @w:val != "0"]]',
+                $closingTable,
             )->length,
         );
 

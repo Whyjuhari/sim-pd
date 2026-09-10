@@ -8,6 +8,44 @@
 @endsection
 
 @section('content')
+    @if ($srikandiWorkflow)
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h6 class="mb-0 fw-bold text-identity"><i class="bi bi-send-check"></i> Alur Srikandi</h6>
+                <span class="badge text-bg-light border">{{ $srikandiWorkflow->label() }}</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md">
+                        <div class="text-muted small">Dokumen resmi</div>
+                        <div class="fw-semibold">
+                            {{ $srikandiWorkflow->external_number ?: 'Belum diterima dari Srikandi' }}
+                        </div>
+                        @if ($srikandiWorkflow->submitted_at)
+                            <div class="small text-muted mt-1">Ditandai dikirim {{ $srikandiWorkflow->submitted_at->format('d/m/Y H:i') }}</div>
+                        @endif
+                    </div>
+                    <div class="col-md-auto d-flex flex-wrap gap-2">
+                        @if ($srikandiWorkflow->status === \App\Models\SptSrikandiWorkflow::STATUS_DRAFT)
+                            <form method="POST"
+                                action="{{ route('spt-srikandi.mark-sent', ['sptGroupId' => $travel->spt_group_id]) }}"
+                                data-sim-confirm data-sim-confirm-title="Tandai sudah dikirim?"
+                                data-sim-confirm-text="PDF draft akan diarsipkan dan data SPT tidak dapat diedit lagi."
+                                data-sim-confirm-button="Ya, tandai dikirim">
+                                @csrf
+                                <button class="btn btn-primary"><i class="bi bi-send"></i> Tandai Dikirim</button>
+                            </form>
+                        @endif
+                        <a class="btn btn-outline-primary"
+                            href="{{ route('spt-srikandi.show', ['sptGroupId' => $travel->spt_group_id]) }}">
+                            <i class="bi bi-folder2-open"></i> Kelola Srikandi
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="card shadow-sm mb-4">
 
         <div class="card-header bg-white py-3">
@@ -19,17 +57,38 @@
 
         <div class="card-body">
 
-            <div class="row mb-3">
+            <div class="row g-3 mb-3">
 
                 <div class="col-md-4">
                     <div class="text-muted small">
-                        Nomor SPT
+                        Referensi SPT
                     </div>
 
                     <div class="fw-semibold">
-                        {{ $travel->no_spt }}
+                        {{ $travel->sptOperationalReference() }}
                     </div>
                 </div>
+
+                <div class="col-md-4">
+                    <div class="text-muted small">Referensi Internal</div>
+                    <div class="fw-semibold">{{ $travel->spt_internal_reference ?? '-' }}</div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="text-muted small">Mode Penomoran</div>
+                    <div class="fw-semibold">
+                        {{ $travel->spt_number_mode === \App\Models\PerjalananDinas::NUMBER_MODE_EXTERNAL
+                            ? 'Parameter Srikandi'
+                            : 'Nomor manual' }}
+                    </div>
+                </div>
+
+                @if ($travel->spt_number_mode === \App\Models\PerjalananDinas::NUMBER_MODE_EXTERNAL)
+                    <div class="col-md-4">
+                        <div class="text-muted small">Nomor Srikandi</div>
+                        <div class="fw-semibold">{{ $travel->spt_external_number ?: 'Belum dicatat' }}</div>
+                    </div>
+                @endif
 
                 <div class="col-md-4">
                     <div class="text-muted small">
@@ -37,7 +96,7 @@
                     </div>
 
                     <div class="fw-semibold">
-                        {{ $travel->no_memo }}
+                        {{ $travel->no_memo ?: '-' }}
                     </div>
                 </div>
 
@@ -60,7 +119,7 @@
                 </div>
 
                 <div>
-                    {{ $travel->perihal_memo }}
+                    {{ $travel->perihal_memo ?: '-' }}
                 </div>
             </div>
 
@@ -103,10 +162,44 @@
             </div>
 
             <div class="fw-semibold">
-                {{ $travel->sptTemplate?->nama ?? 'Template sistem (legacy)' }}
+                {{ $travel->sptTemplateLabel() }}
             </div>
+            @if ($travel->usesDipaTemplate())
+                <div class="small text-muted mt-1">
+                    DIPA TA {{ $travel->dipa_fiscal_year_snapshot }} · {{ $travel->dipa_number_snapshot }} ·
+                    {{ $travel->dipa_date_snapshot?->format('d/m/Y') }}
+                </div>
+            @endif
         </div>
     </div>
+
+    @if ($canRecordSrikandiNumber)
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="bi bi-hash"></i> Catat Nomor Srikandi</h6>
+                <form method="POST"
+                    action="{{ route('travel-orders.record-srikandi-number', ['sptGroupId' => $travel->spt_group_id]) }}"
+                    class="row g-2 align-items-end">
+                    @csrf
+                    <div class="col-md">
+                        <label for="spt_external_number" class="form-label fw-semibold">Nomor dari Srikandi</label>
+                        <input id="spt_external_number" name="spt_external_number" type="text" class="form-control"
+                            maxlength="50" value="{{ old('spt_external_number') }}" required>
+                        @error('spt_external_number')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
+                        <div class="form-text">Opsional dan hanya dapat dicatat satu kali. Surat Tugas tetap memakai ${nomor_naskah}.</div>
+                    </div>
+                    <div class="col-md-auto d-grid">
+                        <button class="btn btn-primary" data-sim-confirm
+                            data-sim-confirm-title="Catat nomor Srikandi?"
+                            data-sim-confirm-text="Nomor akan menjadi referensi dokumen lanjutan dan tidak mengubah isi Surat Tugas."
+                            data-sim-confirm-button="Ya, catat nomor"><i class="bi bi-check-circle"></i> Catat</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
     <div class="card shadow-sm mb-4">
 
         <div class="card-header bg-white py-3">
@@ -308,7 +401,12 @@
             Surat Tugas ini masih dapat
             <strong>diedit atau dihapus</strong>
             karena seluruh pegawai masih berstatus
-            <strong>Siap Berjalan</strong>.
+            <strong>{{ $travel->status === \App\Models\PerjalananDinas::STATUS_DRAFT ? 'Draft SPT' : 'Siap Berjalan' }}</strong>.
+        </div>
+    @elseif ($srikandiWorkflow && $srikandiWorkflow->status !== \App\Models\SptSrikandiWorkflow::STATUS_DRAFT)
+        <div class="alert alert-info">
+            <i class="bi bi-lock"></i>
+            Data Surat Tugas dikunci karena draft sudah ditandai dikirim ke Srikandi.
         </div>
     @else
         <div class="alert alert-warning">

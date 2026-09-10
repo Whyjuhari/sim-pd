@@ -18,6 +18,7 @@ use App\Http\Controllers\HotelRateImportController;
 use App\Http\Controllers\GroundTransportImportController;
 use App\Http\Controllers\AirTransportImportController;
 use App\Http\Controllers\SptTemplateController;
+use App\Http\Controllers\SptSrikandiController;
 use App\Http\Controllers\SystemHealthController;
 use Illuminate\Support\Facades\Route;
 
@@ -147,6 +148,28 @@ Route::middleware('auth')->group(function (): void {
                 [DashboardController::class, 'officer']
             )->name('dashboard.officer');
 
+            Route::get('/spt-srikandi', [SptSrikandiController::class, 'index'])
+                ->name('spt-srikandi.index');
+            Route::get('/spt-srikandi/{sptGroupId}', [SptSrikandiController::class, 'show'])
+                ->whereUuid('sptGroupId')
+                ->name('spt-srikandi.show');
+            Route::post('/spt/{sptGroupId}/mark-sent', [SptSrikandiController::class, 'markSent'])
+                ->whereUuid('sptGroupId')
+                ->name('spt-srikandi.mark-sent');
+            Route::post('/spt-srikandi/{sptGroupId}/upload', [SptSrikandiController::class, 'upload'])
+                ->middleware('throttle:10,1')
+                ->whereUuid('sptGroupId')
+                ->name('spt-srikandi.upload');
+            Route::get('/spt-srikandi/{sptGroupId}/document', [SptSrikandiController::class, 'document'])
+                ->whereUuid('sptGroupId')
+                ->name('spt-srikandi.document');
+            Route::get('/spt-srikandi/{sptGroupId}/draft-document', [SptSrikandiController::class, 'draftDocument'])
+                ->whereUuid('sptGroupId')
+                ->name('spt-srikandi.draft-document');
+            Route::post('/spt-srikandi/{sptGroupId}/publish', [SptSrikandiController::class, 'publish'])
+                ->whereUuid('sptGroupId')
+                ->name('spt-srikandi.publish');
+
             Route::get(
                 '/spt/create',
                 [TravelOrderController::class, 'create']
@@ -168,6 +191,13 @@ Route::middleware('auth')->group(function (): void {
             )
                 ->whereUuid('sptGroupId')
                 ->name('travel-orders.show');
+
+            Route::post(
+                '/spt/{sptGroupId}/record-srikandi-number',
+                [TravelOrderController::class, 'recordSrikandiNumber']
+            )
+                ->whereUuid('sptGroupId')
+                ->name('travel-orders.record-srikandi-number');
 
             Route::get(
                 '/template-spt',
@@ -193,6 +223,10 @@ Route::middleware('auth')->group(function (): void {
                 '/template-spt/{template}/thumbnail',
                 [SptTemplateController::class, 'thumbnail']
             )->whereNumber('template')->name('spt-templates.thumbnail');
+            Route::get(
+                '/template-spt/bawaan/{variant}/thumbnail',
+                [SptTemplateController::class, 'builtInThumbnail']
+            )->where('variant', '[a-z_]+')->name('spt-templates.built-in-thumbnail');
             Route::delete(
                 '/template-spt/{template}',
                 [SptTemplateController::class, 'destroy']
@@ -239,6 +273,9 @@ Route::middleware('auth')->group(function (): void {
 
             Route::get('/anggaran', [BudgetSettingController::class, 'edit'])
                 ->name('program.budget.edit');
+            Route::put('/anggaran/dipa/{fiscalYear}', [BudgetSettingController::class, 'upsertDipa'])
+                ->whereNumber('fiscalYear')
+                ->name('program.dipa.update');
             Route::get('/anggaran/uang-harian/template', [DailyAllowanceImportController::class, 'template'])
                 ->name('program.daily-allowances.template');
             Route::post('/anggaran/uang-harian/impor', [DailyAllowanceImportController::class, 'upload'])

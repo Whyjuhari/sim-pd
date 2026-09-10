@@ -80,7 +80,7 @@
                 <thead><tr><th>No. SPT</th><th>Pegawai</th><th>Tujuan</th><th>Tanggal</th><th>Status</th><th>Estimasi</th><th>Realisasi</th></tr></thead>
                 <tbody>
                 @forelse($travels as $travel)
-                    <tr><td class="fw-semibold text-identity">{{ $travel->no_spt }}</td><td>{{ $travel->pegawai?->nama_lengkap ?? '-' }}</td><td><i class="bi bi-geo-alt-fill text-danger"></i> {{ $travel->kota_tujuan }}</td><td>{{ $travel->tgl_berangkat->format('d/m/Y') }}</td><td><x-ui.status-pill :status="$travel->status" /></td><td>Rp {{ number_format((float) $travel->estimasi_biaya, 0, ',', '.') }}</td><td class="fw-semibold">Rp {{ number_format((float) $travel->total_cair, 0, ',', '.') }}</td></tr>
+                    <tr><td class="fw-semibold text-identity">{{ $travel->sptOperationalReference() }}</td><td>{{ $travel->pegawai?->nama_lengkap ?? '-' }}</td><td><i class="bi bi-geo-alt-fill text-danger"></i> {{ $travel->kota_tujuan }}</td><td>{{ $travel->tgl_berangkat->format('d/m/Y') }}</td><td><x-ui.status-pill :status="$travel->status" /></td><td>Rp {{ number_format((float) $travel->estimasi_biaya, 0, ',', '.') }}</td><td class="fw-semibold">Rp {{ number_format((float) $travel->total_cair, 0, ',', '.') }}</td></tr>
                 @empty
                     <tr><td colspan="7"><x-ui.empty-state icon="calendar-x" title="Belum ada perjalanan pada tahun ini" description="Pilih tahun lain atau tunggu data perjalanan terbaru." /></td></tr>
                 @endforelse

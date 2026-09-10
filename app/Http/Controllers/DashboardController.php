@@ -74,7 +74,7 @@ class DashboardController extends Controller
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($query) use ($search): void {
                     foreach ([
-                        'no_spt', 'menimbang', 'no_memo', 'perihal_memo',
+                        'no_spt', 'spt_internal_reference', 'spt_external_number', 'menimbang', 'no_memo', 'perihal_memo',
                         'maksud_perjalanan', 'kota_tujuan', 'tempat_berangkat', 'akun_anggaran',
                     ] as $field) {
                         $query->orWhere('transaksi_perjadin.'.$field, 'like', "%{$search}%");
@@ -119,7 +119,7 @@ class DashboardController extends Controller
                 PerjalananDinas::STATUS_PENDING => 'Menunggu Verifikasi',
                 PerjalananDinas::STATUS_APPROVED => 'Selesai',
                 PerjalananDinas::STATUS_REJECTED => 'Perlu Revisi',
-                PerjalananDinas::STATUS_DRAFT => 'Draft SPT (Legacy)',
+                PerjalananDinas::STATUS_DRAFT => 'Draft SPT',
             ],
             'totalSpt' => PerjalananDinas::query()
                 ->whereNotNull('spt_group_id')
@@ -156,7 +156,12 @@ class DashboardController extends Controller
 
     public function user(Request $request): View
     {
-        $base = PerjalananDinas::query()->where('user_id', $request->user()->id);
+        $base = PerjalananDinas::query()
+            ->where('user_id', $request->user()->id)
+            ->where(function ($query): void {
+                $query->where('status', '!=', PerjalananDinas::STATUS_DRAFT)
+                    ->orWhereDoesntHave('sptSrikandiWorkflow');
+            });
         $filters = $request->validate([
             'status' => ['nullable', Rule::in([
                 PerjalananDinas::STATUS_DRAFT,
@@ -175,7 +180,11 @@ class DashboardController extends Controller
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($filters['year'] ?? null, fn ($query, $year) => $query->whereYear('tgl_berangkat', $year))
             ->when($destination !== '', fn ($query) => $query->where('kota_tujuan', $destination))
-            ->when($spt !== '', fn ($query) => $query->where('no_spt', 'like', "%{$spt}%"));
+            ->when($spt !== '', fn ($query) => $query->where(function ($query) use ($spt): void {
+                $query->where('no_spt', 'like', "%{$spt}%")
+                    ->orWhere('spt_internal_reference', 'like', "%{$spt}%")
+                    ->orWhere('spt_external_number', 'like', "%{$spt}%");
+            }));
 
         return view('dashboards.user', [
             'travels' => $query->with('laporan')->latest('id')->paginate(10)->withQueryString(),
@@ -198,6 +207,8 @@ class DashboardController extends Controller
         $search = trim((string) $request->query('q', ''));
         $filter = fn ($query) => $query->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
             $query->where('no_spt', 'like', "%{$search}%")
+                ->orWhere('spt_internal_reference', 'like', "%{$search}%")
+                ->orWhere('spt_external_number', 'like', "%{$search}%")
                 ->orWhere('kota_tujuan', 'like', "%{$search}%")
                 ->orWhereHas('pegawai', fn ($query) => $query->where('nama_lengkap', 'like', "%{$search}%"));
         }));

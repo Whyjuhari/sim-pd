@@ -32,7 +32,7 @@
                     <div class="row g-3 align-items-center">
                         <div class="col-md-5">
                             <div class="small text-muted">Surat Perintah Tugas</div>
-                            <div class="fw-semibold text-identity">{{ $travel->no_spt }}</div>
+                            <div class="fw-semibold text-identity">{{ $travel->sptOperationalReference() }}</div>
                         </div>
                         <div class="col-md-4">
                             <div class="small text-muted">Tujuan</div>

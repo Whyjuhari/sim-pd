@@ -1,25 +1,19 @@
 @extends('layouts.app')
 @section('title', 'Template SPT - SIM-PD')
-@section('brand', 'Template SPT')
-@section('page-subtitle', 'Kelola template DOCX yang digunakan untuk mencetak Surat Perintah Tugas.')
+@section('brand', 'Template Surat')
+@section('page-subtitle', 'Kelola template DOCX yang digunakan untuk Membuat Draft Surat Perintah Tugas.')
 @section('page-actions')
     <a href="{{ route('dashboard.officer') }}" class="btn btn-outline-primary">
-        <i class="bi bi-arrow-left"></i> Kembali ke SPT</a>
+        <i class="bi bi-arrow-left"></i> Kembali</a>
 @endsection
 
 @section('content')
-    <div class="alert alert-info small">
-        <i class="bi bi-info-circle"></i>
-        Template yang dipilih pada saat SPT dibuat akan <strong>terkunci</strong> dan digunakan
-        untuk mencetak SPT tersebut.
-    </div>
-
     <div class="row g-3 mb-4 mt-1">
         <div class="col-12 col-lg-5">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-white">
                     <h6 class="mb-0 fw-bold text-identity">
-                        <i class="bi bi-upload"></i> Unggah Template SPT Baru
+                        <i class="bi bi-upload"></i> Unggah Template
                     </h6>
                 </div>
                 <div class="card-body">
@@ -28,7 +22,7 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold">Nama Template</label>
                             <input type="text" name="nama" value="{{ old('nama') }}" class="form-control" required
-                                placeholder="Template SPT V6 Revisi">
+                                placeholder="Nama template">
                             @error('nama')
                                 <div class="text-danger small">{{ $message }}</div>
                             @enderror
@@ -51,7 +45,7 @@
                             @enderror
                         </div>
                         <button class="btn btn-identity w-100">
-                            <i class="bi bi-cloud-arrow-up-fill"></i> Unggah Template
+                            <i class="bi bi-cloud-arrow-up-fill"></i> Unggah
                         </button>
                     </form>
                 </div>
@@ -124,7 +118,7 @@
                                         @endif
                                     </td>
                                     <td>{{ $template->humanReadableSize() }}</td>
-                                    <td>{{ $template->perjalanan_dinas_count ?? $template->usageCount() }} SPT</td>
+                                    <td>{{ $template->perjalanan_dinas_count ?? $template->usageCount() }} Draft Surat</td>
                                     <td>
                                         <div class="d-flex flex-wrap gap-1">
                                             @if (!$template->is_default && $template->is_active)

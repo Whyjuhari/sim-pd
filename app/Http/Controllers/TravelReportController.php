@@ -90,7 +90,7 @@ class TravelReportController extends Controller
             );
         }
 
-        $safeNumber = preg_replace('/[^A-Za-z0-9._-]+/', '_', $travel->no_spt)
+        $safeNumber = preg_replace('/[^A-Za-z0-9._-]+/', '_', $travel->sptOperationalReference())
             ?: 'Laporan';
         $safeName = preg_replace(
             '/[^A-Za-z0-9._-]+/',

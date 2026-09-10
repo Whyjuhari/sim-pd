@@ -33,6 +33,7 @@ class TravelReportDocumentationTest extends TestCase
         Storage::fake('local');
 
         $owner = User::factory()->create();
+        $this->storeTestSignature($owner);
         $travel = $this->createTravel($owner);
 
         $this->actingAs($owner)
@@ -98,6 +99,7 @@ class TravelReportDocumentationTest extends TestCase
         Storage::fake('local');
 
         $owner = User::factory()->create();
+        $this->storeTestSignature($owner);
         $travel = $this->createTravel($owner);
         $url = route('travel-reports.update', ['travel' => $travel->id]);
         $text = [
@@ -680,6 +682,16 @@ class TravelReportDocumentationTest extends TestCase
             'estimasi_biaya' => 4610000,
             'status' => PerjalananDinas::STATUS_READY,
         ]);
+    }
+
+    private function storeTestSignature(User $owner): void
+    {
+        $signaturePath = 'signatures/report-documentation-'.$owner->id.'.png';
+        Storage::disk('local')->put(
+            $signaturePath,
+            file_get_contents(public_path('assets/images/logo.png'))
+        );
+        $owner->update(['ttd_path' => $signaturePath]);
     }
 
     private function skipWhenLibreOfficeIsUnavailable(): void

@@ -38,7 +38,7 @@
                             </h5>
 
                             <div class="text-muted small">
-                                {{ $travel->no_spt }}
+                                {{ $travel->sptOperationalReference() }}
                             </div>
                         </div>
 
@@ -92,15 +92,14 @@
 
 
                         <div class="mb-3">
-
-                            <label class="form-label fw-bold">
-                                Nomor SPT
-                            </label>
-
-                            <input type="text" name="no_spt"
-                                value="{{ old('no_spt', $travel->no_spt) }}"
-                                class="form-control" required>
-
+                            <label class="form-label fw-bold">Nomor SPT</label>
+                            @if ($travel->spt_number_mode === \App\Models\PerjalananDinas::NUMBER_MODE_MANUAL)
+                                <input type="text" name="no_spt" value="{{ old('no_spt', $travel->no_spt) }}"
+                                    class="form-control" maxlength="50" required>
+                            @else
+                                <input type="text" value="{{ $travel->sptDocumentNumber() }}" class="form-control bg-light" readonly>
+                                <div class="form-text">Parameter Srikandi dikunci dan tetap digunakan pada Surat Tugas.</div>
+                            @endif
                         </div>
 
 
@@ -123,11 +122,8 @@
                                 Template SPT
                             </label>
 
-                            @php
-                                $lockedTemplate = $sptTemplates->firstWhere('id', $travel->spt_template_id);
-                            @endphp
                             <input type="text" class="form-control bg-light" readonly
-                                value="{{ $lockedTemplate?->nama ?? 'Template sistem (legacy)' }}">
+                                value="{{ $templateLabel }}">
                             <div class="form-text">
                                 Template dikunci saat SPT dibuat dan tidak dapat diubah.
                             </div>
@@ -137,17 +133,19 @@
 
                         <div class="row">
 
-                            <div class="col-md-4 mb-3">
+                            @if ($usesMemo)
+                                <div class="col-md-4 mb-3">
 
-                                <label class="form-label fw-bold">
-                                    Nomor Memo Internal
-                                </label>
+                                    <label class="form-label fw-bold">
+                                        Nomor Memo Internal
+                                    </label>
 
-                                <input type="text" name="no_memo"
-                                    value="{{ old('no_memo', $travel->no_memo) }}"
-                                    class="form-control" required>
+                                    <input type="text" name="no_memo"
+                                        value="{{ old('no_memo', $travel->no_memo) }}"
+                                        class="form-control" required>
 
-                            </div>
+                                </div>
+                            @endif
 
 
                             <div class="col-md-4 mb-3">
@@ -171,32 +169,36 @@
                             </div>
 
 
-                            <div class="col-md-4 mb-3">
+                            @if ($usesMemo)
+                                <div class="col-md-4 mb-3">
+
+                                    <label class="form-label fw-bold">
+                                        Tanggal Memo Internal
+                                    </label>
+
+                                    <input type="date" name="tgl_memo"
+                                        value="{{ old('tgl_memo', $travel->tgl_memo?->format('Y-m-d')) }}"
+                                        class="form-control" required>
+
+                                </div>
+                            @endif
+
+                        </div>
+
+
+                        @if ($usesMemo)
+                            <div class="mb-3">
 
                                 <label class="form-label fw-bold">
-                                    Tanggal Memo Internal
+                                    Perihal Memo Internal
                                 </label>
 
-                                <input type="date" name="tgl_memo"
-                                    value="{{ old('tgl_memo', $travel->tgl_memo?->format('Y-m-d')) }}"
+                                <input type="text" name="perihal_memo"
+                                    value="{{ old('perihal_memo', $travel->perihal_memo) }}"
                                     class="form-control" required>
 
                             </div>
-
-                        </div>
-
-
-                        <div class="mb-3">
-
-                            <label class="form-label fw-bold">
-                                Perihal Memo Internal
-                            </label>
-
-                            <input type="text" name="perihal_memo"
-                                value="{{ old('perihal_memo', $travel->perihal_memo) }}"
-                                class="form-control" required>
-
-                        </div>
+                        @endif
 
 
                         <div class="mb-3">

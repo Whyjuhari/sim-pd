@@ -109,7 +109,7 @@
                             $stepLabel = $stage['step_label'];
                             $previewId = 'employee-document-preview-' . $travel->id;
                             $finalTriggerId = 'employee-final-document-trigger-' . $travel->id;
-                            $safeSptNumber = preg_replace('/[^A-Za-z0-9._-]+/', '_', $travel->no_spt) ?: 'SPT';
+                            $safeSptNumber = preg_replace('/[^A-Za-z0-9._-]+/', '_', $travel->sptOperationalReference()) ?: 'SPT';
                             $safeEmployeeName =
                                 preg_replace('/[^A-Za-z0-9._-]+/', '_', auth()->user()->nama_lengkap) ?: 'Pegawai';
                             $canPrintFinal =
@@ -129,11 +129,11 @@
                         @endphp
                         <tr @class(['sim-clickable-record' => $hasPrimaryAction])
                             @if ($primaryUrl) data-primary-url="{{ $primaryUrl }}" role="link" tabindex="0"
-                                aria-label="Buka proses {{ $travel->no_spt }}"
+                                aria-label="Buka proses {{ $travel->sptOperationalReference() }}"
                             @elseif($primaryDocumentTrigger)
                                 data-primary-document-trigger="{{ $primaryDocumentTrigger }}" role="button" tabindex="0"
-                                aria-label="Pratinjau Dokumen Perjalanan {{ $travel->no_spt }}" @endif>
-                            <td class="fw-bold text-identity">{{ $travel->no_spt }}</td>
+                                aria-label="Pratinjau Dokumen Perjalanan {{ $travel->sptOperationalReference() }}" @endif>
+                            <td class="fw-bold text-identity">{{ $travel->sptOperationalReference() }}</td>
                             <td><span class="fw-semibold"><i class="bi bi-geo-alt-fill text-danger"></i>
                                     {{ $travel->kota_tujuan }}</span><br><small
                                     class="text-muted">{{ $travel->tgl_berangkat->format('d/m/Y') }}–{{ $travel->tgl_kembali->format('d/m/Y') }}
@@ -212,7 +212,7 @@
                                 @endif
                             </td>
                         </tr>
-                        <x-ui.document-preview :id="$previewId" :document-number="$travel->no_spt" />
+                        <x-ui.document-preview :id="$previewId" :document-number="$travel->sptOperationalReference()" />
                     @empty
                         <tr>
                             <td colspan="5"><x-ui.empty-state icon="briefcase" :title="array_filter($filters) ? 'Perjalanan tidak ditemukan' : 'Belum ada perjalanan'" :description="array_filter($filters)

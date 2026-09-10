@@ -37,6 +37,14 @@
     background: #fff;
 }
 
+.spt-thumb-wrap.spt-thumb-failed canvas {
+    display: none;
+}
+
+.spt-thumb-wrap.spt-thumb-failed .spt-thumb-fallback {
+    display: flex !important;
+}
+
 .spt-thumb-fallback {
     position: absolute;
     inset: 10px 10px 30px;

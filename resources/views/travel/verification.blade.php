@@ -16,7 +16,7 @@
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-white py-3">
                 <h5 class="mb-1">Verifikasi Realisasi {{ $travel->pegawai->nama_lengkap }}</h5>
-                <small class="text-muted">SPT {{ $travel->no_spt }} · {{ $travel->kota_tujuan }} · {{ $travel->lama_hari }} hari · {{ $travel->angkutan }}</small>
+                <small class="text-muted">SPT {{ $travel->sptOperationalReference() }} · {{ $travel->kota_tujuan }} · {{ $travel->lama_hari }} hari · {{ $travel->angkutan }}</small>
             </div>
             <div class="card-body p-4">
                 <div class="row g-3">

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Dashboard Admin - SIM-PD')
-@section('brand', 'Administrasi SIM-PD')
+@section('brand', 'Administrasi Perjalanan Dinas')
 @section('page-subtitle', 'Pantau pengguna, perjalanan dinas, dokumen, dan kesiapan sistem dalam satu ruang kerja.')
 @section('page-actions')
     <a href="{{ route('admin.system-health') }}" class="btn btn-outline-primary">
@@ -48,7 +48,7 @@
                         <tbody>
                             @forelse($travels as $travel)
                                 <tr>
-                                    <td class="fw-bold text-identity">{{ $travel->no_spt }}</td>
+                                    <td class="fw-bold text-identity">{{ $travel->sptOperationalReference() }}</td>
                                     <td>{{ $travel->pegawai->nama_lengkap }}</td>
                                     <td><span class="fw-semibold">{{ $travel->kota_tujuan }}</span><br><small
                                             class="text-muted">{{ $travel->tgl_berangkat->format('d/m/Y') }}</small></td>

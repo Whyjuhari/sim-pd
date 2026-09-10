@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BudgetAccount;
 use App\Models\DailyAllowanceRegulation;
+use App\Models\DipaSetting;
 use App\Models\HotelRegulation;
 use App\Models\GroundTransportRegulation;
 use App\Models\AirTransportRegulation;
@@ -75,12 +76,36 @@ class BudgetSettingController extends Controller
             'airfareCities' => $airTransportCsvService->airfareCities(),
             'pmkReadiness' => $pmkReadiness->summary($readinessYear),
             'readinessYears' => $pmkReadiness->availableYears(),
+            'dipaSettings' => DipaSetting::query()
+                ->with('updater')
+                ->orderByDesc('fiscal_year')
+                ->get(),
             'accounts' => BudgetAccount::query()
                 ->orderByDesc('is_active')
                 ->orderBy('code')
                 ->paginate(15, ['*'], 'account_page')
                 ->withQueryString(),
         ]);
+    }
+
+    public function upsertDipa(Request $request, int $fiscalYear): RedirectResponse
+    {
+        abort_unless($fiscalYear >= 2000 && $fiscalYear <= 2100, 404);
+
+        $data = $request->validate([
+            'document_number' => ['required', 'string', 'max:100'],
+            'document_date' => ['required', 'date'],
+        ]);
+
+        DipaSetting::query()->updateOrCreate(
+            ['fiscal_year' => $fiscalYear],
+            [
+                ...$data,
+                'updated_by' => (int) $request->user()->id,
+            ]
+        );
+
+        return back()->with('success', "Konfigurasi DIPA TA {$fiscalYear} berhasil disimpan.");
     }
 
     public function storeTariff(Request $request, AirTransportCsvService $airTransportCsvService): RedirectResponse

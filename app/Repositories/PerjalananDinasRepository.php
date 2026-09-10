@@ -45,6 +45,8 @@ class PerjalananDinasRepository
 
         return [
             ...$travel->getRawOriginal(),
+            'no_spt' => $travel->sptOperationalReference(),
+            'spt_document_number' => $travel->sptDocumentNumber(),
             'nama_lengkap' => $travel->pegawai->nama_lengkap,
             'nip' => $travel->pegawai->nip,
             'jabatan' => $travel->pegawai->jabatan,

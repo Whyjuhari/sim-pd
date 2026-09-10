@@ -19,6 +19,7 @@ class TravelReportFlowTest extends TestCase
         Storage::fake('local');
 
         $owner = User::factory()->create();
+        $this->storeTestSignature($owner);
         $travel = $this->createTravel($owner);
         $reportUrl = route('travel-reports.update', ['travel' => $travel->id]);
 
@@ -179,5 +180,15 @@ class TravelReportFlowTest extends TestCase
             'kesimpulan' => 'Tujuan perjalanan telah tercapai.',
             'tanggal_laporan' => '2026-08-20',
         ]);
+    }
+
+    private function storeTestSignature(User $owner): void
+    {
+        $signaturePath = 'signatures/report-flow-'.$owner->id.'.png';
+        Storage::disk('local')->put(
+            $signaturePath,
+            file_get_contents(public_path('assets/images/logo.png'))
+        );
+        $owner->update(['ttd_path' => $signaturePath]);
     }
 }

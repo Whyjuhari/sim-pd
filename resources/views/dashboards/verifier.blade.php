@@ -33,7 +33,7 @@
                 <tbody>
                     @forelse($pendingTravels as $travel)
                         <tr>
-                            <td class="fw-semibold text-identity">{{ $travel->no_spt }}</td>
+                            <td class="fw-semibold text-identity">{{ $travel->sptOperationalReference() }}</td>
                             <td><strong>{{ $travel->pegawai->nama_lengkap }}</strong></td>
                             <td><i class="bi bi-geo-alt-fill text-danger"></i> {{ $travel->kota_tujuan }}</td>
                             <td>
@@ -83,7 +83,7 @@
                         @php($travel = $history->perjalananDinas)
                         <tr>
                             <td>{{ $history->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
-                            <td class="fw-semibold">{{ $travel?->no_spt ?? '-' }}</td>
+                            <td class="fw-semibold">{{ $travel?->sptOperationalReference() ?? '-' }}</td>
                             <td>{{ $travel?->pegawai?->nama_lengkap ?? '-' }}</td>
                             <td><x-ui.status-pill :status="$history->to_status" /></td>
                             <td>{{ $history->actor?->nama_lengkap ?? 'Sistem' }}</td>

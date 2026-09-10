@@ -4,6 +4,7 @@ namespace App\Services\Documents;
 
 use App\Models\PerjalananDinas;
 use App\Repositories\PerjalananDinasRepository;
+use App\Support\SptTemplateVariant;
 
 class TravelPdfDocumentService
 {
@@ -82,7 +83,10 @@ class TravelPdfDocumentService
         $documents = config('sim_pd.documents');
         $docxPath = null;
 
-        $templatePath = $this->suratTugasTemplatePath($travel);
+        $templatePath = $this->suratTugasTemplatePath(
+            $travel,
+            count($data['pegawai_list'] ?? [])
+        );
 
         try {
             $scope = $travel->spt_group_id
@@ -120,8 +124,19 @@ class TravelPdfDocumentService
         }
     }
 
-    private function suratTugasTemplatePath(PerjalananDinas $travel): string
+    private function suratTugasTemplatePath(
+        PerjalananDinas $travel,
+        int $employeeCount,
+    ): string
     {
+        if (SptTemplateVariant::exists($travel->spt_template_variant)) {
+            return SptTemplateVariant::pathForEmployeeCount(
+                $travel->spt_template_variant,
+                $employeeCount,
+                (int) config('sim_pd.documents.spt_inline_employee_limit', 2),
+            );
+        }
+
         $travel->loadMissing('sptTemplate');
 
         if ($travel->sptTemplate?->existsOnDisk()) {
@@ -192,7 +207,7 @@ class TravelPdfDocumentService
             'jabatan' => $travel->pegawai->jabatan,
             'pangkat_golongan' => $travel->pegawai->pangkat_golongan,
             'ttd_absolute_path' => $travel->pegawai->signatureAbsolutePath(),
-            'no_spt' => $travel->no_spt,
+            'no_spt' => $travel->sptOperationalReference(),
             'tgl_berangkat' => $travel->getRawOriginal('tgl_berangkat'),
             'tgl_kembali' => $travel->getRawOriginal('tgl_kembali'),
             'kota_tujuan' => $travel->kota_tujuan,
@@ -278,7 +293,7 @@ class TravelPdfDocumentService
             'jabatan' => $travel->pegawai->jabatan,
             'pangkat_golongan' => $travel->pegawai->pangkat_golongan,
             'ttd_absolute_path' => $travel->pegawai->signatureAbsolutePath(),
-            'no_spt' => $travel->no_spt,
+            'no_spt' => $travel->sptOperationalReference(),
             'tgl_berangkat' => $travel->getRawOriginal('tgl_berangkat'),
             'tgl_kembali' => $travel->getRawOriginal('tgl_kembali'),
             'kota_tujuan' => $travel->kota_tujuan,

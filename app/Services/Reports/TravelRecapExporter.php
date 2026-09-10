@@ -115,7 +115,7 @@ class TravelRecapExporter
         $row = 2;
         foreach ((clone $query)->with('pegawai')->lazyById(200) as $travel) {
             $sheet->setCellValue('A'.$row, $travel->tgl_berangkat?->format('d/m/Y'));
-            $sheet->setCellValueExplicit('B'.$row, (string) $travel->no_spt, DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('B'.$row, $travel->sptOperationalReference(), DataType::TYPE_STRING);
             $sheet->fromArray([
                 $travel->pegawai?->nama_lengkap ?? '-',
                 $travel->kota_tujuan,

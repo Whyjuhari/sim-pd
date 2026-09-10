@@ -6,6 +6,7 @@ import "sweetalert2/dist/sweetalert2.min.css";
 import "./document-preview";
 import "./report-preview";
 import "./spt-searchable-selects";
+import "./spt-number-mode";
 import "./spt-cost-preview";
 import "./spt-template-thumbs";
 

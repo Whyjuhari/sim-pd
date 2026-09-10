@@ -13,7 +13,37 @@
                                 class="bi bi-arrow-left me-1"></i>Kembali</a>
                     </div>
                     <div class="row g-4">
-                        @forelse ($templates as $template)
+                        @foreach ($builtInTemplates as $key => $variant)
+                            <div class="col-sm-6 col-lg-4 col-xxl-3">
+                                <a href="{{ route('travel-orders.create', ['template' => \App\Support\SptTemplateVariant::token($key)]) }}"
+                                    class="text-decoration-none template-choice h-100 d-block">
+                                    <div class="card h-100 border shadow-sm">
+                                        <div class="spt-thumb-frame is-paper">
+                                            <div class="spt-thumb-wrap">
+                                                <canvas
+                                                    data-spt-template-thumb="{{ route('spt-templates.built-in-thumbnail', ['variant' => $key]) }}"
+                                                    aria-label="Pratinjau {{ $variant['label'] }}"></canvas>
+                                                <div class="spt-thumb-fallback d-none">
+                                                    <i class="bi bi-file-earmark-text"></i>
+                                                    <small>Pratinjau tidak tersedia</small>
+                                                </div>
+                                            </div>
+                                            <div class="spt-thumb-label">Template bawaan</div>
+                                        </div>
+                                        <div class="card-body d-flex flex-column">
+                                            <h6 class="fw-bold mb-1 text-dark">{{ $variant['label'] }}</h6>
+                                            <p class="small text-muted mb-2">{{ $variant['description'] }}</p>
+                                            <div class="mt-auto small text-secondary">
+                                                {{ $variant['uses_memo'] ? 'Memo' : 'Tanpa Memo' }} ·
+                                                {{ $variant['uses_dipa'] ? 'DIPA' : 'Tanpa DIPA' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        @endforeach
+
+                        @foreach ($templates as $template)
                             <div class="col-sm-6 col-lg-4 col-xxl-3">
                                 <a href="{{ route('travel-orders.create', ['template' => $template->id]) }}"
                                     class="text-decoration-none template-choice h-100 d-block">
@@ -55,21 +85,13 @@
                                                 <i class="bi bi-hdd me-1"></i>{{ $template->humanReadableSize() }} ·
                                                 Dipakai {{ $template->perjalanan_dinas_count ?? 0 }} SPT
                                             </div>
-                                            <span class="btn btn-identity btn-sm mt-3 w-100">Gunakan Template</span>
                                         </div>
                                     </div>
                                 </a>
                             </div>
-                        @empty
-                            <div class="col-12">
-                                <div class="alert alert-warning mb-3">
-                                    Belum ada template yang diunggah. Buat SPT dengan template sistem bawaan,
-                                    atau unggah template.
-                                </div>
-                            </div>
-                        @endforelse
+                        @endforeach
 
-                        <div class="col-sm-6 col-lg-4 col-xxl-3">
+                        {{-- <div class="col-sm-6 col-lg-4 col-xxl-3">
                             <a href="{{ route('travel-orders.create', ['template' => 'system']) }}"
                                 class="text-decoration-none template-choice h-100 d-block">
                                 <div class="card h-100 border shadow-sm">
@@ -89,7 +111,7 @@
                                     </div>
                                 </div>
                             </a>
-                        </div>
+                        </div> --}}
                     </div>
                 </div>
             </div>

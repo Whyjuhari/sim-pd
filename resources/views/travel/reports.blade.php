@@ -30,7 +30,7 @@
 
                     <small>
                         SPT:
-                        {{ $travel->no_spt }}
+                        {{ $travel->sptOperationalReference() }}
                     </small>
 
                 </div>
@@ -116,7 +116,7 @@
                                 Surat Perintah
                             </label>
 
-                            <input type="text" class="form-control bg-light" value="{{ $travel->no_spt }}" readonly>
+                            <input type="text" class="form-control bg-light" value="{{ $travel->sptOperationalReference() }}" readonly>
 
                         </div>
 
@@ -307,7 +307,7 @@
 
             <x-ui.document-preview
                 id="report-document-preview-{{ $travel->id }}"
-                :document-number="$travel->no_spt"
+                :document-number="$travel->sptOperationalReference()"
                 :standalone="true"
                 data-report-preview-section
             >

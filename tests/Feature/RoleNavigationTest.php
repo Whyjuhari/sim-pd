@@ -67,7 +67,10 @@ class RoleNavigationTest extends TestCase
 
     public function test_employee_uses_one_workspace_link_across_dashboard_report_and_realization(): void
     {
+        Storage::fake('local');
         $employee = User::factory()->role(User::ROLE_USER)->create();
+        Storage::disk('local')->put('signatures/navigation.png', 'signature');
+        $employee->update(['ttd_path' => 'signatures/navigation.png']);
         $travel = $this->createTravel($employee);
 
         $this->assertWorkspaceNavigation(

@@ -29,11 +29,19 @@
 !/public/uploads/**/
 !/public/uploads/**/.gitkeep
 
-# Only the three official document templates are versioned. Generated/sample
+# Only the official document templates are versioned. Generated/sample
 # documents must be written to storage and transferred separately when needed.
 /resources/documents/*
 !/resources/documents/SPD_157_Template.xlsx
 !/resources/documents/Template_SPT_Perjadin_COLLECTIVE_V5.docx
+!/resources/documents/Template_SPT_Dasar_Regulasi.docx
+!/resources/documents/Template_SPT_Dasar_Regulasi_Memo.docx
+!/resources/documents/Template_SPT_Dasar_Regulasi_DIPA.docx
+!/resources/documents/Template_SPT_Dasar_Regulasi_Memo_DIPA.docx
+!/resources/documents/Template_SPT_Dasar_Regulasi_Lampiran.docx
+!/resources/documents/Template_SPT_Dasar_Regulasi_Memo_Lampiran.docx
+!/resources/documents/Template_SPT_Dasar_Regulasi_DIPA_Lampiran.docx
+!/resources/documents/Template_SPT_Dasar_Regulasi_Memo_DIPA_Lampiran.docx
 !/resources/documents/Template_Laporan_Perjadin.docx
 
 # Database dumps and private key material are deployment data, not source code.

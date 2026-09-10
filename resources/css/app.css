@@ -2876,6 +2876,67 @@ body {
     line-height: 1.35;
 }
 
+/* Form Buat SPT: samakan pola multi-pilih Pegawai dengan dropdown Kota Tujuan. */
+.app-body .spt-employee-dropdown-field .choices--dropdown-search .choices__inner {
+    position: relative;
+    min-height: 44px;
+    padding-right: 2.6rem;
+    cursor: pointer;
+}
+
+.app-body .spt-employee-dropdown-field .choices--dropdown-search .choices__inner::after {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    width: 0;
+    height: 0;
+    margin-top: -2.5px;
+    content: "";
+    border-style: solid;
+    border-width: 5px 5px 0;
+    border-color: #34495e transparent transparent;
+    pointer-events: none;
+}
+
+.app-body .spt-employee-dropdown-field .choices--dropdown-search.is-open .choices__inner::after {
+    margin-top: -3.5px;
+    border-width: 0 5px 5px;
+    border-color: transparent transparent #34495e;
+}
+
+.app-body .spt-employee-dropdown-field .choices--dropdown-search .choices__list--multiple {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+}
+
+.app-body .spt-employee-dropdown-field .choices--dropdown-search .choices__list--multiple:empty {
+    display: none;
+}
+
+.app-body .spt-employee-dropdown-field .choices__closed-placeholder {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: .55rem .35rem;
+    color: #8a929b;
+    line-height: 1.25;
+    text-align: left;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+}
+
+.app-body .spt-employee-dropdown-field .choices__input--dropdown-search {
+    display: block;
+    width: 100% !important;
+    min-width: 0;
+    margin: 0;
+    padding: .65rem .8rem;
+    border: 0;
+    border-bottom: 1px solid var(--sim-border);
+    border-radius: 0;
+    background: #fff;
+}
+
 @media (max-width: 575.98px) {
     .app-body .spt-searchable-field .choices__inner {
         padding-inline: .5rem;

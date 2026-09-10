@@ -7,6 +7,8 @@ use App\Models\PerjalananDinas;
 use App\Models\Province;
 use App\Models\SptTemplate;
 use App\Models\User;
+use App\Services\Documents\GeneratedPdfCache;
+use App\Support\SptTemplateVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -59,6 +61,177 @@ class SptTemplateTest extends TestCase
 
         $employee = User::factory()->create();
         $this->actingAs($employee)->get(route('spt-templates.index'))->assertForbidden();
+    }
+
+    public function test_selection_screen_uses_pdf_thumbnails_for_built_in_templates(): void
+    {
+        $officer = User::factory()->role(User::ROLE_OFFICER)->create();
+
+        $response = $this->actingAs($officer)->get(route('travel-orders.create'));
+
+        $response->assertOk();
+
+        foreach (SptTemplateVariant::all() as $key => $variant) {
+            $response->assertSee(
+                'data-spt-template-thumb="'.route(
+                    'spt-templates.built-in-thumbnail',
+                    ['variant' => $key],
+                ).'"',
+                false,
+            );
+            $response->assertSee('aria-label="Pratinjau '.$variant['label'].'"', false);
+        }
+    }
+
+    public function test_built_in_variants_have_automatic_attachment_layouts(): void
+    {
+        foreach (SptTemplateVariant::all() as $key => $variant) {
+            $inlinePath = SptTemplateVariant::pathForEmployeeCount($key, 2);
+            $attachmentPath = SptTemplateVariant::pathForEmployeeCount($key, 3);
+
+            $this->assertSame(resource_path('documents/'.$variant['filename']), $inlinePath);
+            $this->assertSame(
+                resource_path('documents/'.$variant['attachment_filename']),
+                $attachmentPath,
+            );
+            $this->assertFileExists($inlinePath);
+            $this->assertFileExists($attachmentPath);
+            $this->assertNotSame($inlinePath, $attachmentPath);
+        }
+    }
+
+    public function test_built_in_travel_tables_fit_a4_and_stay_together(): void
+    {
+        foreach (SptTemplateVariant::all() as $variant) {
+            foreach ([$variant['filename'], $variant['attachment_filename']] as $filename) {
+                $path = resource_path('documents/'.$filename);
+                $zip = new \ZipArchive();
+                $this->assertTrue($zip->open($path) === true, "DOCX {$path} harus dapat dibuka.");
+                $xml = $zip->getFromName('word/document.xml');
+                $zip->close();
+                $this->assertIsString($xml);
+
+                $document = new \DOMDocument();
+                $this->assertTrue($document->loadXML($xml));
+                $xpath = new \DOMXPath($document);
+                $namespace = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+                $xpath->registerNamespace('w', $namespace);
+
+                $tables = $xpath->query(
+                    '/w:document/w:body/w:tbl'
+                    .'[contains(., "VI.")][contains(., "Catatan lain-lain")]'
+                    .'[contains(., "VII.")][contains(., "PERHATIAN")]'
+                );
+                $this->assertNotFalse($tables);
+                $this->assertSame(1, $tables->length);
+                $table = $tables->item(0);
+                $this->assertNotNull($table);
+                $this->assertSame(
+                    1,
+                    $xpath->query(
+                        'preceding-sibling::*[1][self::w:p[.//w:br[@w:type="page"]]]',
+                        $table,
+                    )->length,
+                    'Tabel perjalanan harus selalu dimulai pada halaman tersendiri.',
+                );
+
+                $allRows = $xpath->query('./w:tr', $table);
+                $this->assertNotFalse($allRows);
+                $this->assertContains($allRows->length, [8, 9]);
+                $travelRowsPath = $allRows->length === 9
+                    ? './w:tr[position() > 1]'
+                    : './w:tr';
+                $rows = $xpath->query($travelRowsPath, $table);
+                $this->assertNotFalse($rows);
+                $this->assertSame(8, $rows->length);
+
+                $minimumHeight = 0;
+                foreach ($rows as $row) {
+                    $this->assertSame(1, $xpath->query('./w:trPr/w:cantSplit', $row)->length);
+                    $height = $xpath->query('./w:trPr/w:trHeight', $row)->item(0);
+                    $this->assertNotNull($height);
+                    $this->assertSame('atLeast', $height->getAttributeNS($namespace, 'hRule'));
+                    $minimumHeight += (int) $height->getAttributeNS($namespace, 'val');
+                }
+
+                $section = $xpath->query('/w:document/w:body/w:sectPr')->item(0);
+                $this->assertNotNull($section);
+                $pageSize = $xpath->query('./w:pgSz', $section)->item(0);
+                $pageMargin = $xpath->query('./w:pgMar', $section)->item(0);
+                $this->assertNotNull($pageSize);
+                $this->assertNotNull($pageMargin);
+                $usableHeight = (int) $pageSize->getAttributeNS($namespace, 'h')
+                    - (int) $pageMargin->getAttributeNS($namespace, 'top')
+                    - (int) $pageMargin->getAttributeNS($namespace, 'bottom');
+                $this->assertLessThanOrEqual(
+                    $usableHeight,
+                    $minimumHeight,
+                    'Tinggi minimum tabel perjalanan harus muat pada area cetak A4.',
+                );
+
+                $travelParagraphsPath = $allRows->length === 9
+                    ? './w:tr[position() > 1]//w:p'
+                    : './w:tr//w:p';
+                $paragraphs = $xpath->query($travelParagraphsPath, $table);
+                $this->assertNotFalse($paragraphs);
+                $this->assertGreaterThan(1, $paragraphs->length);
+                $this->assertSame(
+                    $paragraphs->length,
+                    $xpath->query($travelParagraphsPath.'[w:pPr/w:keepLines]', $table)->length,
+                );
+                $this->assertSame(
+                    $paragraphs->length - 1,
+                    $xpath->query(
+                        $travelParagraphsPath
+                        .'[w:pPr/w:keepNext[not(@w:val) or @w:val != "0"]]',
+                        $table,
+                    )->length,
+                );
+                $this->assertSame(
+                    1,
+                    $xpath->query('following-sibling::*[1][self::w:sectPr]', $table)->length,
+                    'Paragraf kosong setelah tabel dapat menghasilkan halaman terakhir kosong.',
+                );
+            }
+        }
+    }
+
+    public function test_built_in_thumbnail_is_private_and_served_from_generated_cache(): void
+    {
+        Storage::fake('local');
+
+        $officer = User::factory()->role(User::ROLE_OFFICER)->create();
+        $variant = SptTemplateVariant::REGULATIONS;
+        $pdfPath = Storage::disk('local')->path('testing/built-in-template.pdf');
+        Storage::disk('local')->put('testing/built-in-template.pdf', '%PDF-1.4 fake');
+
+        $cache = \Mockery::mock(GeneratedPdfCache::class);
+        $cache->shouldReceive('remember')
+            ->once()
+            ->withArgs(fn ($type, $scope, $payload, $dependencies, $generate): bool =>
+                $type === 'spt-template-thumbnail'
+                && $scope === 'built-in-'.$variant
+                && ($payload['variant'] ?? null) === $variant
+                && in_array(SptTemplateVariant::path($variant), $dependencies, true)
+                && $generate instanceof \Closure
+            )
+            ->andReturn($pdfPath);
+        $this->app->instance(GeneratedPdfCache::class, $cache);
+
+        $this->actingAs($officer)
+            ->get(route('spt-templates.built-in-thumbnail', ['variant' => $variant]))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf')
+            ->assertHeader('cache-control', 'max-age=86400, private');
+
+        $employee = User::factory()->create();
+        $this->actingAs($employee)
+            ->get(route('spt-templates.built-in-thumbnail', ['variant' => $variant]))
+            ->assertForbidden();
+
+        $this->actingAs($officer)
+            ->get(route('spt-templates.built-in-thumbnail', ['variant' => 'unknown']))
+            ->assertNotFound();
     }
 
     public function test_officer_can_upload_a_valid_template(): void
@@ -306,6 +479,7 @@ class SptTemplateTest extends TestCase
             ->assertSee($defaultTemplate->nama, false)
             ->assertSee($activeTemplate->nama, false)
             ->assertSee('Template Sistem', false)
+            ->assertSee('Dasar Regulasi dan Memo', false)
             ->assertDontSee('Template Nonaktif', false)
             ->assertDontSee('name="spt_template_id"', false);
 
@@ -323,14 +497,15 @@ class SptTemplateTest extends TestCase
 
         $form->assertOk()
             ->assertSee('name="spt_template_id"', false)
-            ->assertSee($defaultTemplate->nama, false)
             ->assertSee($activeTemplate->nama, false)
+            ->assertSee('Ganti template', false)
+            ->assertDontSee($defaultTemplate->nama, false)
             ->assertDontSee('Template Nonaktif', false);
 
         $xpath = new \DOMXPath($this->htmlDocument($form->getContent()));
-        $selectedOption = $xpath->query(sprintf('//select[@name="spt_template_id"]/option[@value="%d" and @selected]', $activeTemplate->id));
-        $this->assertSame(1, $selectedOption->length);
-        $this->assertSame(0, $xpath->query(sprintf('//select[@name="spt_template_id"]/option[@value="%d" and @selected]', $defaultTemplate->id))->length);
+        $selectedInput = $xpath->query(sprintf('//input[@type="hidden" and @name="spt_template_id" and @value="%d"]', $activeTemplate->id));
+        $this->assertSame(1, $selectedInput->length);
+        $this->assertSame(0, $xpath->query('//select[@name="spt_template_id"]')->length);
     }
 
     public function test_invalid_or_unknown_template_param_falls_back_to_selection_screen(): void

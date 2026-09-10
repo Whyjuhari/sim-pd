@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\SptTemplateVariant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -31,6 +32,10 @@ class PerjalananDinas extends Model
     public const STATUS_APPROVED = 'approved';
     public const STATUS_REJECTED = 'rejected';
 
+    public const NUMBER_MODE_EXTERNAL = 'external_parameter';
+    public const NUMBER_MODE_MANUAL = 'manual';
+    public const NUMBER_PLACEHOLDER = '${nomor_naskah}';
+
     public $timestamps = false;
 
     protected $table = 'transaksi_perjadin';
@@ -45,6 +50,8 @@ class PerjalananDinas extends Model
             'tgl_kembali' => 'date',
             'tgl_lapor' => 'date',
             'created_at' => 'datetime',
+            'spt_external_number_recorded_at' => 'datetime',
+            'dipa_date_snapshot' => 'date',
             'lama_hari' => 'integer',
             'estimasi_biaya' => 'decimal:2',
             'biaya_hotel_real' => 'decimal:2',
@@ -118,6 +125,62 @@ class PerjalananDinas extends Model
     public function sptTemplate(): BelongsTo
     {
         return $this->belongsTo(SptTemplate::class, 'spt_template_id');
+    }
+
+    public function dipaSetting(): BelongsTo
+    {
+        return $this->belongsTo(DipaSetting::class, 'dipa_setting_id');
+    }
+
+    public function sptExternalNumberRecorder(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'spt_external_number_recorded_by');
+    }
+
+    public function sptSrikandiWorkflow(): HasOne
+    {
+        return $this->hasOne(SptSrikandiWorkflow::class, 'spt_group_id', 'spt_group_id');
+    }
+
+    public function sptDocumentNumber(): string
+    {
+        return $this->spt_number_mode === self::NUMBER_MODE_EXTERNAL
+            ? self::NUMBER_PLACEHOLDER
+            : (string) $this->no_spt;
+    }
+
+    public function sptOperationalReference(): string
+    {
+        if ($this->spt_number_mode !== self::NUMBER_MODE_EXTERNAL) {
+            return (string) $this->no_spt;
+        }
+
+        return (string) ($this->spt_external_number
+            ?: $this->spt_internal_reference
+            ?: self::NUMBER_PLACEHOLDER);
+    }
+
+    public function sptTemplateLabel(): string
+    {
+        if ($this->spt_template_variant) {
+            return SptTemplateVariant::get($this->spt_template_variant)['label'] ?? 'Template bawaan';
+        }
+
+        return $this->sptTemplate?->nama ?? 'Template sistem (legacy)';
+    }
+
+    public function usesMemoTemplate(): bool
+    {
+        if (! $this->spt_template_variant) {
+            return true;
+        }
+
+        return (bool) (SptTemplateVariant::get($this->spt_template_variant)['uses_memo'] ?? true);
+    }
+
+    public function usesDipaTemplate(): bool
+    {
+        return (bool) (SptTemplateVariant::get($this->spt_template_variant)['uses_dipa'] ?? false);
     }
 
     public function laporan(): HasOne

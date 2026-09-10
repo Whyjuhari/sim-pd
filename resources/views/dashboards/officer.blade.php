@@ -2,23 +2,25 @@
 @section('title', 'Dashboard Officer - SIM-PD')
 @section('brand', 'Pengelolaan SPT')
 @section('page-subtitle', 'Buat, cari, pantau, dan cetak Surat Perintah Tugas kolektif dengan lebih cepat.')
-@section('page-actions')
+{{-- @section('page-actions')
     <a href="{{ route('travel-orders.create') }}" class="btn btn-identity">
-        <i class="bi bi-plus-circle-fill"></i> Buat SPT Baru</a>
-@endsection
+        <i class="bi bi-plus-circle-fill"></i> Buat Draft Surat</a>
+@endsection --}}
 
 @section('content')
     <div class="row g-3 mb-4">
         <div class="col-12 col-sm-6 col-lg-4"><x-ui.metric-card label="Total Surat Tugas" :value="$totalSpt" icon="files"
                 tone="primary" hint="Seluruh SPT kolektif" /></div>
-        <div class="col-12 col-sm-6 col-lg-4"><x-ui.metric-card label="Hasil Ditampilkan" :value="$sptGroups->total()"
-                icon="funnel-fill" tone="teal" hint="Sesuai pencarian saat ini" /></div>
+        <div class="col-12 col-sm-6 col-lg-4"><x-ui.metric-card label="Hasil Ditampilkan" :value="$sptGroups->total()" icon="funnel-fill"
+                tone="teal" hint="Sesuai pencarian saat ini" /></div>
         <div class="col-12 col-lg-4">
             <div class="metric-card metric-card-warning h-100">
                 <div class="metric-card-body">
-                    <div class="metric-card-copy"><span class="metric-card-label">Aksi Utama</span><strong
+                    <div class="metric-card-copy">
+                        <span class="metric-card-label">Aksi Utama</span><strong
                             class="metric-card-value fs-5">SPT</strong><span class="metric-card-hint">Satu surat
-                            untuk beberapa pegawai</span></div>
+                            untuk beberapa pegawai</span>
+                    </div>
                     <span class="metric-card-icon"><i class="bi bi-people-fill"></i></span>
                 </div>
             </div>
@@ -95,10 +97,14 @@
                     @forelse($sptGroups as $group)
                         @php($travel = $group['travel'])
                         @php($previewId = 'officer-spt-preview-' . $travel->id)
-                        @php($safeSptNumber = preg_replace('/[^A-Za-z0-9._-]+/', '_', $travel->no_spt) ?: 'SPT')
+                        @php($safeSptNumber = preg_replace('/[^A-Za-z0-9._-]+/', '_', $travel->sptOperationalReference()) ?: 'SPT')
                         <tr class="officer-record">
                             <td class="officer-record-number fw-bold text-identity">
-                                <div class="officer-record-value">{{ $travel->no_spt }}</div>
+                                <div class="officer-record-value">{{ $travel->sptOperationalReference() }}</div>
+                                @if ($travel->spt_internal_reference && $travel->sptOperationalReference() !== $travel->spt_internal_reference)
+                                    <small
+                                        class="d-block text-muted fw-normal mt-1">{{ $travel->spt_internal_reference }}</small>
+                                @endif
                             </td>
                             <td class="officer-record-employees">
                                 <div class="officer-record-value">
@@ -128,8 +134,9 @@
                                 </div>
                             </td>
                             <td class="officer-record-actions">
-                                <div class="officer-record-value officer-record-actions-grid d-flex flex-wrap align-items-center gap-2"><a
-                                        href="{{ route('travel-orders.show', ['sptGroupId' => $travel->spt_group_id]) }}"
+                                <div
+                                    class="officer-record-value officer-record-actions-grid d-flex flex-wrap align-items-center gap-2">
+                                    <a href="{{ route('travel-orders.show', ['sptGroupId' => $travel->spt_group_id]) }}"
                                         class="d-flex justify-content-center align-items-center btn btn-sm btn-outline-primary"><i
                                             class="bi bi-eye me-1"></i> Detail</a><button type="button"
                                         class="btn btn-sm btn-primary" data-document-preview-trigger
@@ -137,14 +144,15 @@
                                         data-document-label="Surat Perintah Tugas"
                                         data-document-filename="SPT_{{ $safeSptNumber }}.pdf"
                                         aria-controls="{{ $previewId }}" aria-expanded="false"><i
-                                            class="bi bi-printer me-1"></i> Cetak</button></div>
+                                            class="bi bi-printer me-1"></i> Cetak</button>
+                                </div>
                             </td>
                         </tr>
-                        <x-ui.document-preview :id="$previewId" :document-number="$travel->no_spt" />
+                        <x-ui.document-preview :id="$previewId" :document-number="$travel->sptOperationalReference()" />
                     @empty
                         <tr>
                             <td colspan="5"><x-ui.empty-state icon="search" title="Surat tugas tidak ditemukan"
-                                    description="Ubah pencarian atau reset filter untuk melihat data npm lainnya.">
+                                    description="Ubah pencarian atau reset filter untuk melihat data spt lainnya.">
                                     @if ($filters['q'] !== '' || $filters['status'] !== '' || $filters['destination'] !== '')
                                         <a href="{{ route('dashboard.officer') }}"
                                             class="btn btn-outline-primary btn-sm">Reset pencarian</a>
