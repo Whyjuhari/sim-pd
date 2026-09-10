@@ -83,8 +83,7 @@
                     @empty
                         <tr>
                             <td colspan="5">
-                                <x-ui.empty-state icon="send" title="Belum ada alur Srikandi"
-                                    description="SPT baru dengan mode Parameter Srikandi akan muncul di sini." />
+                                <x-ui.empty-state icon="send" title="Belum ada Draft SPT" />
                             </td>
                         </tr>
                     @endforelse
