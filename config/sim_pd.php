@@ -24,6 +24,10 @@ return [
             'binary' => env('LIBREOFFICE_BINARY', 'C:\\Program Files\\LibreOffice\\program\\soffice.exe'),
             'timeout' => (int) env('LIBREOFFICE_TIMEOUT', 60),
         ],
+        'pdf_text' => [
+            'binary' => env('PDFTOTEXT_BINARY', 'pdftotext'),
+            'timeout' => (int) env('PDFTOTEXT_TIMEOUT', 15),
+        ],
         'report_documentation' => [
             'max_files' => 2,
             'max_kilobytes_per_file' => 5120,

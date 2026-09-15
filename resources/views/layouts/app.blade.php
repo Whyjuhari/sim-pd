@@ -37,15 +37,17 @@
             <a class="navbar-brand app-brand me-auto" href="{{ route('dashboard') }}">
                 <span class="app-logo-wrap"><img src="{{ asset('assets/images/logo.png') }}" class="app-logo"
                         alt="Logo BPVP Pangkep"></span>
-                <span class="app-brand-copy"><strong>SIM-PD</strong><small>BPVP Pangkep</small></span>
+                <span class="app-brand-copy"><strong>Sistem Informasi</strong><small>Perjalanan Dinas</small></span>
             </a>
 
             <div class="app-user-tools">
                 <a href="{{ route('profile.edit') }}" class="app-user-summary">
                     <img src="{{ auth()->user()->photoUrl() }}" class="app-user-avatar"
                         alt="Foto {{ auth()->user()->nama_lengkap }}">
-                    <span
-                        class="app-user-copy d-none d-sm-flex"><strong>{{ auth()->user()->nama_lengkap }}</strong><small>{{ $roleLabel }}</small></span>
+                    <span class="app-user-copy d-none d-sm-flex">
+                        <strong>{{ auth()->user()->nama_lengkap }}</strong>
+                        <small>{{ $roleLabel }}</small>
+                    </span>
                 </a>
                 <form method="POST" action="{{ route('logout') }}" class="m-0">
                     @csrf
@@ -72,7 +74,7 @@
     <div class="app-shell">
         <aside class="d-none d-xl-flex app-sidebar app-sidebar-desktop">@include('layouts.sidebar')</aside>
         <main class="app-main">
-            <div class="app-content">
+            <div class="app-content" data-live-filter-page>
                 <x-ui.page-header :title="$pageTitle" :subtitle="!$isDashboard && $pageSubtitle !== '' ? $pageSubtitle : null" :show-breadcrumb="!$isDashboard">
                     @yield('page-actions')
                 </x-ui.page-header>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PerjalananDinas;
 use App\Models\PerjalananDinasStatusHistory;
+use App\Models\SptSrikandiWorkflow;
 use App\Models\User;
 use App\Services\Reports\TravelRecapService;
 use App\Services\Reports\PmkComplianceService;
@@ -50,7 +51,7 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function officer(Request $request): View
+    public function officer(Request $request): View|RedirectResponse
     {
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
@@ -62,12 +63,23 @@ class DashboardController extends Controller
                 PerjalananDinas::STATUS_REJECTED,
             ])],
             'destination' => ['nullable', 'string', 'max:100'],
+            'process_status' => ['nullable', Rule::in(array_keys(SptSrikandiWorkflow::statusLabels()))],
         ]);
         $search = trim((string) ($validated['q'] ?? ''));
         $status = (string) ($validated['status'] ?? '');
         $destination = trim((string) ($validated['destination'] ?? ''));
+        $processStatus = (string) ($validated['process_status'] ?? '');
 
-        $groupPages = PerjalananDinas::query()
+        // Preserve old links while keeping unfinished letters in Proses SPT only.
+        if ($processStatus !== '' && $processStatus !== SptSrikandiWorkflow::STATUS_PUBLISHED) {
+            return redirect()->route('spt-srikandi.index', ['q' => $search, 'status' => $processStatus]);
+        }
+        $availableSpts = PerjalananDinas::query()
+            ->whereNotNull('transaksi_perjadin.spt_group_id')
+            ->where(fn ($query) => $query->whereDoesntHave('sptSrikandiWorkflow')
+                ->orWhereHas('sptSrikandiWorkflow', fn ($workflow) => $workflow->where('status', SptSrikandiWorkflow::STATUS_PUBLISHED)));
+
+        $groupPages = (clone $availableSpts)
             ->select('transaksi_perjadin.spt_group_id')
             ->join('users', 'users.id', '=', 'transaksi_perjadin.user_id')
             ->whereNotNull('transaksi_perjadin.spt_group_id')
@@ -92,7 +104,7 @@ class DashboardController extends Controller
 
         $groupIds = $groupPages->getCollection()->pluck('spt_group_id')->all();
         $travelsByGroup = PerjalananDinas::query()
-            ->with('pegawai')
+            ->with(['pegawai', 'sptSrikandiWorkflow'])
             ->whereIn('spt_group_id', $groupIds)
             ->orderBy('id')
             ->get()
@@ -110,7 +122,7 @@ class DashboardController extends Controller
 
         return view('dashboards.officer', [
             'sptGroups' => $groupPages,
-            'destinationOptions' => PerjalananDinas::query()
+            'destinationOptions' => (clone $availableSpts)
                 ->whereNotNull('kota_tujuan')
                 ->distinct()->orderBy('kota_tujuan')->pluck('kota_tujuan'),
             'filters' => ['q' => $search, 'status' => $status, 'destination' => $destination],
@@ -121,8 +133,7 @@ class DashboardController extends Controller
                 PerjalananDinas::STATUS_REJECTED => 'Perlu Revisi',
                 PerjalananDinas::STATUS_DRAFT => 'Draft SPT',
             ],
-            'totalSpt' => PerjalananDinas::query()
-                ->whereNotNull('spt_group_id')
+            'totalSpt' => (clone $availableSpts)
                 ->distinct()
                 ->count('spt_group_id'),
         ]);

@@ -40,10 +40,11 @@
                 <h5 class="fw-bold mb-0"><i class="bi bi-clock-history"></i> Riwayat Perjalanan Dinas</h5>
                 <small class="text-muted">{{ $travels->total() }} perjalanan sesuai filter</small>
             </div>
-            <form method="GET" action="{{ route('employees.show') }}" class="d-flex gap-2">
+            <form method="GET" action="{{ route('employees.show') }}" class="d-flex gap-2"
+                data-live-filter="employee-travel-history">
                 <input type="hidden" name="id" value="{{ $employee->id }}">
                 <label for="status" class="visually-hidden">Filter status perjalanan</label>
-                <select id="status" name="status" class="form-select" onchange="this.form.submit()">
+                <select id="status" name="status" class="form-select">
                     <option value="">Semua status</option>
                     @foreach([\App\Models\PerjalananDinas::STATUS_READY, \App\Models\PerjalananDinas::STATUS_PENDING, \App\Models\PerjalananDinas::STATUS_REJECTED, \App\Models\PerjalananDinas::STATUS_APPROVED] as $option)
                         <option value="{{ $option }}" @selected($status === $option)>{{ \App\Support\TravelStatus::label($option) }} ({{ $statusCounts[$option] ?? 0 }})</option>

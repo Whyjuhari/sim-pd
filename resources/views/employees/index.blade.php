@@ -12,11 +12,11 @@
     <div class="card shadow-sm">
         <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h5 class="mb-0 fw-bold text-identity">Data Pegawai</h5>
-            <form method="GET" class="input-group" style="max-width:340px">
+            <form method="GET" class="input-group" style="max-width:340px" data-live-filter="employee-index">
                 <label for="employee-search" class="visually-hidden">Cari pegawai</label>
                 <input id="employee-search" name="q" value="{{ $search }}" class="form-control form-control-sm"
                     placeholder="Nama, NIP, username">
-                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i></button>
+                <button class="btn btn-sm btn-outline-primary live-filter-submit"><i class="bi bi-search"></i></button>
             </form>
         </div>
         <div class="card-body table-responsive">

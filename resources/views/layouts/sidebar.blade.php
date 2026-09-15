@@ -1,4 +1,9 @@
-@php($role = auth()->user()->role)
+@php
+    $role = auth()->user()->role;
+    $officerDetail = $role === \App\Models\User::ROLE_OFFICER && request()->routeIs('travel-orders.show', 'travel-orders.edit');
+    $officerProcessDetail = $officerDetail && isset($srikandiWorkflow) && $srikandiWorkflow
+        && $srikandiWorkflow->status !== \App\Models\SptSrikandiWorkflow::STATUS_PUBLISHED;
+@endphp
 <div class="app-sidebar-content">
     <div class="app-sidebar-heading">Ruang kerja</div>
     <nav class="nav flex-column" aria-label="Navigasi utama">
@@ -20,7 +25,7 @@
                 @endif
             </a>
         @else
-            <a class="nav-link {{ request()->routeIs('dashboard.*') ? 'active' : '' }}" href="{{ route('dashboard') }}">
+            <a class="nav-link {{ request()->routeIs('dashboard.*') || ($officerDetail && !$officerProcessDetail) ? 'active' : '' }}" href="{{ route('dashboard') }}">
                 <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
             </a>
 
@@ -37,16 +42,15 @@
                     href="{{ route('admin.system-health') }}"><i class="bi bi-heart-pulse-fill"></i><span>Kesehatan
                         Sistem</span></a>
             @elseif($role === \App\Models\User::ROLE_OFFICER)
-                {{-- <a class="nav-link {{ request()->routeIs('travel-orders.*') ? 'active' : '' }}"
+                <a class="nav-link {{ request()->routeIs('travel-orders.create') ? 'active' : '' }}"
                     href="{{ route('travel-orders.create') }}"><i class="bi bi-file-earmark-plus-fill"></i><span>Buat
-                        Draft
-                        SPT</span></a> --}}
-                <a class="nav-link {{ request()->routeIs('spt-srikandi.*') ? 'active' : '' }}"
-                    href="{{ route('spt-srikandi.index') }}"><i class="bi bi-send-check-fill"></i><span>Kelola
+                        SPT</span></a>
+                <a class="nav-link {{ request()->routeIs('spt-srikandi.*') || $officerProcessDetail ? 'active' : '' }}"
+                    href="{{ route('spt-srikandi.index') }}"><i class="bi bi-send-check-fill"></i><span>Proses
                         SPT</span>
                     @if (($navigationWorkCount ?? 0) > 0)
                         <span class="nav-work-badge"
-                            aria-label="{{ $navigationWorkCount }} SPT Srikandi memerlukan tindakan">{{ $navigationWorkCount > 99 ? '99+' : $navigationWorkCount }}</span>
+                            aria-label="{{ $navigationWorkCount }} SPT memerlukan tindakan">{{ $navigationWorkCount > 99 ? '99+' : $navigationWorkCount }}</span>
                     @endif
                 </a>
                 <a class="nav-link {{ request()->routeIs('spt-templates.*') ? 'active' : '' }}"

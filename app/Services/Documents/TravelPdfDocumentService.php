@@ -124,6 +124,21 @@ class TravelPdfDocumentService
         }
     }
 
+    public function suratTugasDocx(PerjalananDinas $travel): string
+    {
+        $data = $this->suratTugasData($travel->id);
+        $documents = config('sim_pd.documents');
+        $templatePath = $this->suratTugasTemplatePath(
+            $travel,
+            count($data['pegawai_list'] ?? [])
+        );
+
+        return (new SuratTugasDocxGenerator(
+            $templatePath,
+            $documents['temporary_dir'],
+        ))->generate($data);
+    }
+
     private function suratTugasTemplatePath(
         PerjalananDinas $travel,
         int $employeeCount,

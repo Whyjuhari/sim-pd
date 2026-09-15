@@ -4,6 +4,8 @@ import Chart from "chart.js/auto";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
 import "./document-preview";
+import "./live-filters";
+import "./officer-spt-process";
 import "./report-preview";
 import "./spt-searchable-selects";
 import "./spt-number-mode";
@@ -155,10 +157,13 @@ document.addEventListener("submit", async (event) => {
     }
 });
 
-document.addEventListener("DOMContentLoaded", () => {
-    document
-        .querySelectorAll(".app-body .table-responsive > table.table")
+const enhanceResponsiveTables = (root = document) => {
+    root
+        .querySelectorAll(".table-responsive > table.table")
         .forEach((table) => {
+            if (table.dataset.responsiveRecordsReady === "true") return;
+
+            table.dataset.responsiveRecordsReady = "true";
             table.classList.add("responsive-records");
             const labels = Array.from(table.querySelectorAll("thead th")).map(
                 (heading) => heading.textContent.replace(/\s+/g, " ").trim(),
@@ -177,22 +182,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             });
         });
+};
 
-    const openPrimaryRecord = (record) => {
-        const documentTriggerId = record.dataset.primaryDocumentTrigger;
-
-        if (documentTriggerId) {
-            document.getElementById(documentTriggerId)?.click();
-            return;
-        }
-
-        const url = record.dataset.primaryUrl;
-        if (url) window.location.assign(url);
-    };
-
-    document
+const enhancePrimaryRecords = (root = document) => {
+    root
         .querySelectorAll("[data-primary-url], [data-primary-document-trigger]")
         .forEach((record) => {
+            if (record.dataset.primaryRecordReady === "true") return;
+
+            record.dataset.primaryRecordReady = "true";
             record.addEventListener("click", (event) => {
                 if (
                     event.target.closest(
@@ -212,6 +210,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
         });
+};
+
+const enhanceDynamicContent = (root = document) => {
+    enhanceResponsiveTables(root);
+    enhancePrimaryRecords(root);
+};
+
+const openPrimaryRecord = (record) => {
+    const documentTriggerId = record.dataset.primaryDocumentTrigger;
+
+    if (documentTriggerId) {
+        document.getElementById(documentTriggerId)?.click();
+        return;
+    }
+
+    const url = record.dataset.primaryUrl;
+    if (url) window.location.assign(url);
+};
+
+document.addEventListener("sim:content-updated", (event) => {
+    enhanceDynamicContent(event.detail?.root ?? document);
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    enhanceDynamicContent();
 
     const successMessage = document.body.dataset.flashSuccess;
 

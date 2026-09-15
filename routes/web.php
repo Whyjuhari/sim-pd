@@ -156,6 +156,13 @@ Route::middleware('auth')->group(function (): void {
             Route::post('/spt/{sptGroupId}/mark-sent', [SptSrikandiController::class, 'markSent'])
                 ->whereUuid('sptGroupId')
                 ->name('spt-srikandi.mark-sent');
+            Route::get('/spt/{sptGroupId}/concept.docx', [SptSrikandiController::class, 'conceptDocument'])
+                ->middleware('throttle:10,1')
+                ->whereUuid('sptGroupId')
+                ->name('spt-srikandi.concept-document');
+            Route::post('/spt/{sptGroupId}/revision', [SptSrikandiController::class, 'revision'])
+                ->whereUuid('sptGroupId')
+                ->name('spt-srikandi.revision');
             Route::post('/spt-srikandi/{sptGroupId}/upload', [SptSrikandiController::class, 'upload'])
                 ->middleware('throttle:10,1')
                 ->whereUuid('sptGroupId')

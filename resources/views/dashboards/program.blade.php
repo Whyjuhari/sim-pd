@@ -62,7 +62,7 @@
         </div>
         <div class="collapse filter-collapse" id="programFilters">
             <div class="card-body border-bottom bg-light-subtle">
-                <form method="GET" class="row g-3 align-items-end">
+                <form method="GET" class="row g-3 align-items-end" data-live-filter="program-dashboard">
                     <div class="col-md-6 col-xl-2"><label for="from" class="form-label small">Dari tanggal</label><input
                             id="from" type="date" name="from" value="{{ $filters['from'] ?? '' }}"
                             class="form-control"></div>
@@ -93,9 +93,9 @@
                                     {{ \App\Support\TravelStatus::label($status) }}</option>
                             @endforeach
                         </select></div>
-                    <div class="col-xl-2 d-flex gap-2"><button class="btn btn-primary flex-fill">Terapkan</button><a
+                    <div class="col-xl-2 d-flex gap-2"><button class="btn btn-primary flex-fill live-filter-submit">Terapkan</button><a
                             href="{{ route('dashboard.program') }}" class="btn btn-outline-secondary"
-                            aria-label="Reset filter"><i class="bi bi-arrow-counterclockwise"></i></a></div>
+                            aria-label="Reset filter" data-live-filter-reset><i class="bi bi-arrow-counterclockwise"></i></a></div>
                 </form>
             </div>
         </div>

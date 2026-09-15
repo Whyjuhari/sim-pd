@@ -10,8 +10,32 @@ class SptSrikandiWorkflow extends Model
 {
     public const STATUS_DRAFT = 'draft';
     public const STATUS_WAITING = 'waiting_srikandi';
+    public const STATUS_REVISION = 'revision_required';
     public const STATUS_UPLOADED = 'uploaded';
     public const STATUS_PUBLISHED = 'published';
+
+    public const ACTIONABLE_STATUSES = [self::STATUS_DRAFT, self::STATUS_REVISION, self::STATUS_UPLOADED];
+
+    public static function statusLabels(): array
+    {
+        return [
+            self::STATUS_DRAFT => 'Belum Dikirim',
+            self::STATUS_WAITING => 'Menunggu SPT Selesai',
+            self::STATUS_REVISION => 'Perlu Diperbaiki',
+            self::STATUS_UPLOADED => 'Siap Dicek',
+            self::STATUS_PUBLISHED => 'Sudah Dibagikan',
+        ];
+    }
+
+    public function badgeTone(): string
+    {
+        return match ($this->status) {
+            self::STATUS_REVISION => 'warning',
+            self::STATUS_UPLOADED => 'primary',
+            self::STATUS_PUBLISHED => 'success',
+            default => 'secondary',
+        };
+    }
 
     protected $guarded = ['id'];
 
@@ -28,6 +52,20 @@ class SptSrikandiWorkflow extends Model
     public function travels(): HasMany
     {
         return $this->hasMany(PerjalananDinas::class, 'spt_group_id', 'spt_group_id');
+    }
+
+    public function versions(): HasMany
+    {
+        return $this->hasMany(SptSrikandiVersion::class, 'workflow_id')->orderBy('version_number');
+    }
+
+    public function latestVersion(): ?SptSrikandiVersion
+    {
+        if ($this->relationLoaded('versions')) {
+            return $this->versions->sortByDesc('version_number')->first();
+        }
+
+        return $this->versions()->orderByDesc('version_number')->first();
     }
 
     public function submitter(): BelongsTo
@@ -47,12 +85,6 @@ class SptSrikandiWorkflow extends Model
 
     public function label(): string
     {
-        return match ($this->status) {
-            self::STATUS_DRAFT => 'Draft',
-            self::STATUS_WAITING => 'Menunggu Srikandi',
-            self::STATUS_UPLOADED => 'Siap Diterbitkan',
-            self::STATUS_PUBLISHED => 'Sudah Diterbitkan',
-            default => 'Status tidak dikenal',
-        };
+        return self::statusLabels()[$this->status] ?? 'Status tidak dikenal';
     }
 }

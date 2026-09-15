@@ -51,6 +51,8 @@ class SweetAlertDialogTest extends TestCase
             resource_path('views/program/hotel-rate-preview.blade.php'),
             resource_path('views/program/ground-transport-preview.blade.php'),
             resource_path('views/travel/show.blade.php'),
+            resource_path('views/travel/partials/officer-spt-process.blade.php'),
+            resource_path('views/travel/partials/officer-spt-details.blade.php'),
             resource_path('views/travel/reports.blade.php'),
             resource_path('views/travel/realization.blade.php'),
             resource_path('views/travel/verification.blade.php'),
@@ -63,7 +65,8 @@ class SweetAlertDialogTest extends TestCase
 
         preg_match_all('/\bdata-sim-confirm(?=\s|>)/', $confirmationMarkup, $confirmationAttributes);
 
-        $this->assertCount(14, $confirmationAttributes[0]);
+        // Sending uses one explicit, server-validated checkbox, not a second popup.
+        $this->assertCount(17, $confirmationAttributes[0]);
         $this->assertStringContainsString('data-realization-preview', $confirmationMarkup);
         $this->assertStringContainsString("Swal.fire", $confirmationMarkup);
         $this->assertStringContainsString('data-existing-evidence', $confirmationMarkup);

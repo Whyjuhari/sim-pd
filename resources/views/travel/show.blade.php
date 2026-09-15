@@ -1,50 +1,23 @@
 @extends('layouts.app')
 
+@php
+    $processPreviewId = $srikandiWorkflow ? 'spt-process-preview-' . $srikandiWorkflow->id : null;
+    $safeReference = preg_replace('/[^A-Za-z0-9._-]+/', '_', $travel->spt_internal_reference ?? 'SPT') ?: 'SPT';
+    $latestProcessVersion = $srikandiWorkflow?->latestVersion();
+    $processComplete = $srikandiWorkflow?->status === \App\Models\SptSrikandiWorkflow::STATUS_PUBLISHED;
+@endphp
+
 @section('title', 'Detail SPT - SIM-PD')
 @section('brand', 'Detail Surat Tugas')
 @section('page-subtitle', 'Tinjau informasi surat, tujuan, anggota, dan status perjalanan dalam SPT kolektif.')
 @section('page-actions')
-    <a href="{{ route('dashboard.officer') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
+    <a href="{{ $detailBackRoute }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
 @endsection
 
 @section('content')
     @if ($srikandiWorkflow)
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <h6 class="mb-0 fw-bold text-identity"><i class="bi bi-send-check"></i> Alur Srikandi</h6>
-                <span class="badge text-bg-light border">{{ $srikandiWorkflow->label() }}</span>
-            </div>
-            <div class="card-body">
-                <div class="row g-3 align-items-end">
-                    <div class="col-md">
-                        <div class="text-muted small">Dokumen resmi</div>
-                        <div class="fw-semibold">
-                            {{ $srikandiWorkflow->external_number ?: 'Belum diterima dari Srikandi' }}
-                        </div>
-                        @if ($srikandiWorkflow->submitted_at)
-                            <div class="small text-muted mt-1">Ditandai dikirim {{ $srikandiWorkflow->submitted_at->format('d/m/Y H:i') }}</div>
-                        @endif
-                    </div>
-                    <div class="col-md-auto d-flex flex-wrap gap-2">
-                        @if ($srikandiWorkflow->status === \App\Models\SptSrikandiWorkflow::STATUS_DRAFT)
-                            <form method="POST"
-                                action="{{ route('spt-srikandi.mark-sent', ['sptGroupId' => $travel->spt_group_id]) }}"
-                                data-sim-confirm data-sim-confirm-title="Tandai sudah dikirim?"
-                                data-sim-confirm-text="PDF draft akan diarsipkan dan data SPT tidak dapat diedit lagi."
-                                data-sim-confirm-button="Ya, tandai dikirim">
-                                @csrf
-                                <button class="btn btn-primary"><i class="bi bi-send"></i> Tandai Dikirim</button>
-                            </form>
-                        @endif
-                        <a class="btn btn-outline-primary"
-                            href="{{ route('spt-srikandi.show', ['sptGroupId' => $travel->spt_group_id]) }}">
-                            <i class="bi bi-folder2-open"></i> Kelola Srikandi
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
+        @include('travel.partials.officer-spt-process')
+    @else
 
     <div class="card shadow-sm mb-4">
 
@@ -61,7 +34,7 @@
 
                 <div class="col-md-4">
                     <div class="text-muted small">
-                        Referensi SPT
+                        {{ $srikandiWorkflow ? 'Kode SPT' : 'Nomor / Referensi SPT' }}
                     </div>
 
                     <div class="fw-semibold">
@@ -69,27 +42,30 @@
                     </div>
                 </div>
 
-                <div class="col-md-4">
-                    <div class="text-muted small">Referensi Internal</div>
-                    <div class="fw-semibold">{{ $travel->spt_internal_reference ?? '-' }}</div>
-                </div>
+                @if (!$srikandiWorkflow && $travel->spt_internal_reference && $travel->sptOperationalReference() !== $travel->spt_internal_reference)
+                    <div class="col-md-4">
+                        <div class="text-muted small">Kode SPT</div>
+                        <div class="fw-semibold">{{ $travel->spt_internal_reference }}</div>
+                    </div>
+                @endif
 
                 <div class="col-md-4">
                     <div class="text-muted small">Mode Penomoran</div>
                     <div class="fw-semibold">
                         {{ $travel->spt_number_mode === \App\Models\PerjalananDinas::NUMBER_MODE_EXTERNAL
-                            ? 'Parameter Srikandi'
-                            : 'Nomor manual' }}
+                            ? 'Proses lewat SRIKANDI'
+                            : 'Isi nomor sendiri' }}
                     </div>
                 </div>
 
-                @if ($travel->spt_number_mode === \App\Models\PerjalananDinas::NUMBER_MODE_EXTERNAL)
+                @if (!$srikandiWorkflow && $travel->spt_number_mode === \App\Models\PerjalananDinas::NUMBER_MODE_EXTERNAL && $travel->spt_external_number)
                     <div class="col-md-4">
-                        <div class="text-muted small">Nomor Srikandi</div>
-                        <div class="fw-semibold">{{ $travel->spt_external_number ?: 'Belum dicatat' }}</div>
+                        <div class="text-muted small">Nomor surat tercatat</div>
+                        <div class="fw-semibold">{{ $travel->spt_external_number }}</div>
                     </div>
                 @endif
 
+                @if ($travel->no_memo || $travel->tgl_memo)
                 <div class="col-md-4">
                     <div class="text-muted small">
                         Nomor Memo Internal
@@ -109,19 +85,22 @@
                         {{ $travel->tgl_memo?->format('d/m/Y') ?? '-' }}
                     </div>
                 </div>
+                @endif
 
             </div>
 
 
+            @if ($travel->perihal_memo)
             <div class="mb-3">
                 <div class="text-muted small">
                     Perihal Memo Internal
                 </div>
 
                 <div>
-                    {{ $travel->perihal_memo ?: '-' }}
+                    {{ $travel->perihal_memo }}
                 </div>
             </div>
+            @endif
 
 
             <div class="mb-3">
@@ -397,16 +376,18 @@
     @if ($canModify)
         <div class="alert alert-success">
             <i class="bi bi-check-circle"></i>
-
-            Surat Tugas ini masih dapat
-            <strong>diedit atau dihapus</strong>
-            karena seluruh pegawai masih berstatus
-            <strong>{{ $travel->status === \App\Models\PerjalananDinas::STATUS_DRAFT ? 'Draft SPT' : 'Siap Berjalan' }}</strong>.
+            Surat Tugas ini masih dapat <strong>diedit{{ $canDelete ? ' atau dihapus' : '' }}</strong>.
+            @if (!$canDelete)
+                Riwayat konsep yang pernah dikirim tetap disimpan.
+            @endif
         </div>
-    @elseif ($srikandiWorkflow && $srikandiWorkflow->status !== \App\Models\SptSrikandiWorkflow::STATUS_DRAFT)
+    @elseif ($srikandiWorkflow && !in_array($srikandiWorkflow->status, [
+        \App\Models\SptSrikandiWorkflow::STATUS_DRAFT,
+        \App\Models\SptSrikandiWorkflow::STATUS_REVISION,
+    ], true))
         <div class="alert alert-info">
             <i class="bi bi-lock"></i>
-            Data Surat Tugas dikunci karena draft sudah ditandai dikirim ke Srikandi.
+            Data Surat Tugas dikunci karena konsep sudah ditandai dikirim.
         </div>
     @else
         <div class="alert alert-warning">
@@ -420,27 +401,21 @@
 
     <div class="d-flex flex-wrap gap-2">
 
-        <a href="{{ route('dashboard.officer') }}" class="btn btn-secondary">
-            <i class="bi bi-arrow-left"></i>
-            Kembali
-        </a>
-
         @if ($canModify)
-            {{-- EDIT --}}
             <a href="{{ route('travel-orders.edit', [
                 'sptGroupId' => $travel->spt_group_id,
-            ]) }}"
+            ] + $detailContext) }}"
                 class="btn btn-warning">
                 <i class="bi bi-pencil-square"></i>
                 Edit SPT
             </a>
+        @endif
 
-
-            {{-- DELETE --}}
+        @if ($canDelete)
             <form
                 action="{{ route('travel-orders.destroy', [
                     'sptGroupId' => $travel->spt_group_id,
-                ]) }}"
+                ] + $detailContext) }}"
                 method="POST" class="d-inline" data-sim-confirm data-sim-confirm-title="Hapus SPT kolektif?"
                 data-sim-confirm-text="Semua data pegawai yang tergabung dalam SPT ini akan dihapus. Tindakan ini tidak dapat dibatalkan."
                 data-sim-confirm-button="Ya, hapus SPT" data-sim-confirm-tone="danger">
@@ -457,5 +432,5 @@
         @endif
 
     </div>
-
+    @endif
 @endsection

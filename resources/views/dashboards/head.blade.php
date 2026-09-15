@@ -8,9 +8,9 @@
             <a href="{{ route('head.recap.export', ['format' => 'xlsx', 'year' => $year]) }}" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Excel</a>
             <a href="{{ route('head.recap.export', ['format' => 'pdf', 'year' => $year]) }}" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
         </div>
-        <form method="GET" class="d-flex align-items-center gap-2">
+        <form method="GET" class="d-flex align-items-center gap-2" data-live-filter="head-dashboard">
             <label for="year" class="visually-hidden">Tahun monitoring</label>
-            <div class="input-group"><span class="input-group-text"><i class="bi bi-calendar3"></i></span><input id="year" type="number" name="year" min="2000" max="2100" value="{{ $year }}" class="form-control" style="width:100px"><button class="btn btn-primary">Tampilkan</button></div>
+            <div class="input-group"><span class="input-group-text"><i class="bi bi-calendar3"></i></span><input id="year" type="number" name="year" min="2000" max="2100" value="{{ $year }}" class="form-control" style="width:100px"><button class="btn btn-primary live-filter-submit">Tampilkan</button></div>
         </form>
     </div>
 @endsection

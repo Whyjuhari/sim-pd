@@ -21,10 +21,7 @@ class NavigationWorkCount
                 ->where('status', PerjalananDinas::STATUS_PENDING)
                 ->count(),
             User::ROLE_OFFICER => SptSrikandiWorkflow::query()
-                ->whereIn('status', [
-                    SptSrikandiWorkflow::STATUS_WAITING,
-                    SptSrikandiWorkflow::STATUS_UPLOADED,
-                ])->count(),
+                ->whereIn('status', SptSrikandiWorkflow::ACTIONABLE_STATUSES)->count(),
             default => 0,
         };
     }

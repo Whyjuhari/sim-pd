@@ -11,12 +11,12 @@
         <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h2 class="section-title mb-0"><span class="section-title-icon"><i class="bi bi-shield-check"></i></span> Kesiapan
                 Data PMK</h2>
-            <form method="GET" class="d-flex gap-2">
+            <form method="GET" class="d-flex gap-2" data-live-filter="budget-readiness">
                 @if ($search !== '')
                     <input type="hidden" name="q" value="{{ $search }}">
                 @endif
                 <label for="readiness_year" class="visually-hidden">Tahun anggaran</label>
-                <select id="readiness_year" name="readiness_year" class="form-select" onchange="this.form.submit()">
+                <select id="readiness_year" name="readiness_year" class="form-select">
                     @foreach ($readinessYears as $year)
                         <option value="{{ $year }}" @selected($pmkReadiness['year'] === $year)>TA {{ $year }}</option>
                     @endforeach
@@ -512,10 +512,10 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <span class="fw-bold">Master Tujuan & Pemetaan PMK</span>
-                    <form method="GET" class="d-flex gap-2">
+                    <form method="GET" class="d-flex gap-2" data-live-filter="budget-destination-search">
                         <input name="q" value="{{ $search }}" class="form-control form-control-sm"
                             placeholder="Cari kota">
-                        <button class="btn btn-sm btn-outline-primary" aria-label="Cari tarif"><i
+                        <button class="btn btn-sm btn-outline-primary live-filter-submit" aria-label="Cari tarif"><i
                                 class="bi bi-search"></i></button>
                     </form>
                 </div>

@@ -6,7 +6,7 @@
 @section('content')
     <div class="card mb-4">
         <div class="card-body">
-            <form method="GET" class="row g-3 align-items-end">
+            <form method="GET" class="row g-3 align-items-end" data-live-filter="verification-history">
                 <div class="col-12 col-lg-4">
                     <label for="q" class="form-label">Pencarian</label>
                     <input id="q" name="q" class="form-control" value="{{ $filters['q'] ?? '' }}"
@@ -26,10 +26,11 @@
                         type="date" name="from" value="{{ $filters['from'] ?? '' }}" class="form-control"></div>
                 <div class="col-6 col-lg-2"><label for="to" class="form-label">Sampai</label><input id="to"
                         type="date" name="to" value="{{ $filters['to'] ?? '' }}" class="form-control"></div>
-                <div class="col-6 col-lg-2 d-grid"><button class="btn btn-primary"><i class="bi bi-funnel"></i>
+                <div class="col-6 col-lg-2 d-grid"><button class="btn btn-primary live-filter-submit"><i class="bi bi-funnel"></i>
                         Terapkan</button></div>
                 @if (array_filter($filters))
-                    <div class="col-12"><a href="{{ route('verifications.history') }}" class="btn btn-link px-0"><i
+                    <div class="col-12"><a href="{{ route('verifications.history') }}" class="btn btn-link px-0"
+                            data-live-filter-reset><i
                                 class="bi bi-arrow-counterclockwise"></i> Reset filter</a></div>
                 @endif
             </form>

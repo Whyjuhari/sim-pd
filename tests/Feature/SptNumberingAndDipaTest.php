@@ -48,13 +48,14 @@ class SptNumberingAndDipaTest extends TestCase
         [$officer, $employee] = $this->actors();
         $secondEmployee = User::factory()->create();
 
-        $this->actingAs($officer)->post(route('travel-orders.store'), $this->payload($employee, [
+        $response = $this->actingAs($officer)->post(route('travel-orders.store'), $this->payload($employee, [
             'user_ids' => [$employee->id, $secondEmployee->id],
             'spt_number_mode' => PerjalananDinas::NUMBER_MODE_EXTERNAL,
             'spt_template_variant' => SptTemplateVariant::REGULATIONS,
-        ]))->assertRedirect(route('dashboard.officer'));
+        ]))->assertSessionHasNoErrors();
 
         $travel = PerjalananDinas::query()->firstOrFail();
+        $response->assertRedirect(route('travel-orders.show', ['sptGroupId' => $travel->spt_group_id]));
         $groupTravels = PerjalananDinas::query()->where('spt_group_id', $travel->spt_group_id)->get();
         $this->assertCount(2, $groupTravels);
         $this->assertTrue($groupTravels->every(fn (PerjalananDinas $item): bool =>

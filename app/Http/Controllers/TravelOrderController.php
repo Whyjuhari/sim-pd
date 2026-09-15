@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\OfficerSptNavigation;
+
 use App\Models\MasterTarif;
 use App\Models\BudgetAccount;
 use App\Models\DailyAllowanceRate;
 use App\Models\DipaSetting;
 use App\Models\PerjalananDinas;
+use App\Models\SptSrikandiVersion;
 use App\Models\SptSrikandiWorkflow;
 use App\Models\SptTemplate;
 use App\Models\User;
@@ -223,11 +226,18 @@ class TravelOrderController extends Controller
             );
         }
 
+        $successMessage = $data['spt_number_mode'] === PerjalananDinas::NUMBER_MODE_EXTERNAL
+            ? 'SPT berhasil disimpan sebagai konsep dan belum tersedia untuk Pegawai. Periksa konsep, lalu unduh file Word untuk melanjutkan.'
+            : 'SPT berhasil disimpan dan siap digunakan.';
+
         return redirect()
-            ->route('dashboard.officer')
+            ->route(
+                $data['spt_number_mode'] === PerjalananDinas::NUMBER_MODE_EXTERNAL ? 'travel-orders.show' : 'dashboard.officer',
+                $data['spt_number_mode'] === PerjalananDinas::NUMBER_MODE_EXTERNAL ? ['sptGroupId' => $sptGroupId] : []
+            )
             ->with(
                 'success',
-                'Semua SPT berhasil disimpan.'
+                $successMessage
             );
     }
 
@@ -271,6 +281,7 @@ class TravelOrderController extends Controller
         ]);
     }
     public function show(
+        Request $request,
         string $sptGroupId
     ): View {
         $travels =
@@ -287,8 +298,15 @@ class TravelOrderController extends Controller
             );
 
         $workflow = SptSrikandiWorkflow::query()
+            ->with(['versions.preparer', 'versions.submitter', 'versions.revisionRequester', 'publisher', 'uploader'])
             ->where('spt_group_id', $sptGroupId)
             ->first();
+
+        $preparedVersion = $workflow?->versions->sortByDesc('version_number')
+            ->first(fn ($version) => $version->submitted_at === null);
+        $conceptReady = $preparedVersion && $this->srikandiStorage->verifiedConceptAbsolutePath(
+            $preparedVersion->docx_path, $preparedVersion->docx_sha256
+        );
 
         return view(
             'travel.show',
@@ -296,7 +314,12 @@ class TravelOrderController extends Controller
                 'travel' => $travel,
                 'travels' => $travels,
                 'canModify' => $canModify,
+                'canDelete' => $this->canDelete($travels),
                 'srikandiWorkflow' => $workflow,
+                'detailContext' => OfficerSptNavigation::context($request),
+                'detailBackRoute' => OfficerSptNavigation::backUrl($request, $workflow && $workflow->status !== SptSrikandiWorkflow::STATUS_PUBLISHED),
+                'conceptReady' => (bool) $conceptReady,
+                'preparedVersion' => $preparedVersion,
                 'canRecordSrikandiNumber' => ! $workflow
                     && $travel->spt_number_mode === PerjalananDinas::NUMBER_MODE_EXTERNAL
                     && empty($travel->spt_external_number),
@@ -379,12 +402,13 @@ class TravelOrderController extends Controller
         });
 
         return redirect()
-            ->route('travel-orders.show', ['sptGroupId' => $sptGroupId])
+            ->route('travel-orders.show', ['sptGroupId' => $sptGroupId] + OfficerSptNavigation::context($request))
             ->with('success', 'Nomor Srikandi berhasil dicatat tanpa mengubah isi Surat Tugas.');
     }
 
 
     public function edit(
+        Request $request,
         string $sptGroupId
     ): View|RedirectResponse {
         $travels =
@@ -400,7 +424,7 @@ class TravelOrderController extends Controller
                     [
                         'sptGroupId'
                         => $sptGroupId,
-                    ]
+                    ] + OfficerSptNavigation::context($request)
                 )
                 ->withErrors([
                     'spt' =>
@@ -411,6 +435,8 @@ class TravelOrderController extends Controller
         return view(
             'travel.edit',
             [
+                'srikandiWorkflow' => $travels->first()->sptSrikandiWorkflow,
+                'detailContext' => OfficerSptNavigation::context($request),
                 'travel'
                 => $travels->first(),
 
@@ -522,13 +548,16 @@ class TravelOrderController extends Controller
          *
          * dianggap sebagai satu kesatuan.
          */
+        $invalidatedConceptPaths = [];
+
         DB::transaction(
             function () use (
                 $sptGroupId,
                 $requestedUserIds,
-                $commonData
+                $commonData,
+                &$invalidatedConceptPaths,
             ): void {
-                SptSrikandiWorkflow::query()
+                $workflow = SptSrikandiWorkflow::query()
                     ->where('spt_group_id', $sptGroupId)
                     ->lockForUpdate()
                     ->first();
@@ -566,6 +595,22 @@ class TravelOrderController extends Controller
                         'spt' =>
                         'Perubahan dibatalkan karena proses perjalanan salah satu pegawai sudah berjalan.',
                     ]);
+                }
+
+                if ($workflow) {
+                    $preparedVersions = SptSrikandiVersion::query()
+                        ->where('workflow_id', $workflow->id)
+                        ->whereNull('submitted_at')
+                        ->lockForUpdate()
+                        ->get();
+                    $invalidatedConceptPaths = $preparedVersions->pluck('docx_path')->filter()->all();
+                    SptSrikandiVersion::query()
+                        ->whereKey($preparedVersions->modelKeys())
+                        ->delete();
+
+                    if ($workflow->status === SptSrikandiWorkflow::STATUS_REVISION) {
+                        $workflow->update(['status' => SptSrikandiWorkflow::STATUS_DRAFT]);
+                    }
                 }
 
                 /*
@@ -698,6 +743,10 @@ class TravelOrderController extends Controller
             }
         );
 
+        foreach ($invalidatedConceptPaths as $path) {
+            $this->srikandiStorage->delete($path);
+        }
+
         $referenceId = PerjalananDinas::query()
             ->where('spt_group_id', $sptGroupId)
             ->min('id');
@@ -714,7 +763,7 @@ class TravelOrderController extends Controller
                 [
                     'sptGroupId'
                     => $sptGroupId,
-                ]
+                ] + OfficerSptNavigation::context($request)
             )
             ->with(
                 'success',
@@ -767,7 +816,7 @@ class TravelOrderController extends Controller
                  * SPT tidak boleh dihapus apabila salah
                  * satu pegawai sudah menjalankan proses.
                  */
-                if (! $this->canModify($travels)) {
+                if (! $this->canDelete($travels)) {
                     throw ValidationException::withMessages([
                         'spt' =>
                         'Surat Tugas tidak dapat dihapus karena proses perjalanan salah satu pegawai sudah berjalan.',
@@ -778,6 +827,7 @@ class TravelOrderController extends Controller
                     $workflowFiles = [
                         $workflow->draft_pdf_path,
                         $workflow->official_pdf_path,
+                        ...$workflow->versions()->pluck('docx_path')->all(),
                     ];
                     $workflow->delete();
                 }
@@ -796,10 +846,9 @@ class TravelOrderController extends Controller
             }
         );
 
-        $this->srikandiStorage->deleteWorkflowFiles(
-            $workflowFiles[0] ?? null,
-            $workflowFiles[1] ?? null,
-        );
+        foreach ($workflowFiles as $path) {
+            $this->srikandiStorage->delete($path);
+        }
 
         return redirect()
             ->route('dashboard.officer')
@@ -1452,12 +1501,41 @@ class TravelOrderController extends Controller
                 ->where('spt_group_id', $groupId)
                 ->first();
 
-            if ($workflow && $workflow->status !== SptSrikandiWorkflow::STATUS_DRAFT) {
+            if ($workflow && ! in_array($workflow->status, [
+                SptSrikandiWorkflow::STATUS_DRAFT,
+                SptSrikandiWorkflow::STATUS_REVISION,
+            ], true)) {
                 return false;
             }
         }
 
         return $travels->every(fn (PerjalananDinas $travel): bool => in_array(
+            $travel->status,
+            [PerjalananDinas::STATUS_DRAFT, PerjalananDinas::STATUS_READY],
+            true
+        ));
+    }
+
+    private function canDelete(EloquentCollection $travels): bool
+    {
+        $groupId = $travels->first()?->spt_group_id;
+        if ($groupId) {
+            $workflow = SptSrikandiWorkflow::query()
+                ->where('spt_group_id', $groupId)
+                ->first();
+
+            if ($workflow) {
+                if ($workflow->status !== SptSrikandiWorkflow::STATUS_DRAFT) {
+                    return false;
+                }
+
+                if ($workflow->versions()->whereNotNull('submitted_at')->exists()) {
+                    return false;
+                }
+            }
+        }
+
+        return $travels->every(fn(PerjalananDinas $travel): bool => in_array(
             $travel->status,
             [PerjalananDinas::STATUS_DRAFT, PerjalananDinas::STATUS_READY],
             true

@@ -1,97 +1,125 @@
 @extends('layouts.app')
-
-@section('title', 'SPT Srikandi - SIM-PD')
-@section('brand', 'Surat Perintah Tugas')
+@section('title', 'Proses SPT - SIM-PD')
+@section('brand', 'Proses SPT')
+@section('page-subtitle', 'Surat yang masih diurus sebelum dibagikan kepada pegawai.')
 @section('page-actions')
     <a href="{{ route('travel-orders.create') }}" class="btn btn-identity">
-        <i class="bi bi-plus-circle-fill"></i> Buat Draft Surat</a>
+        <i class="bi bi-plus-circle-fill"></i> Buat SPT</a>
 @endsection
 
-
 @section('content')
-    <div class="card shadow-sm">
-        <div class="card-header bg-white py-3">
-            <form method="GET" class="row g-2 align-items-end">
-                <div class="col-12 col-md">
-                    <label for="q" class="form-label">Cari SPT</label>
-                    <input id="q" name="q" class="form-control" value="{{ $filters['q'] }}"
-                        placeholder="Pegawai, atau tujuan">
-                </div>
-                <div class="col-8 col-md-4 col-xl-3">
-                    <label for="status" class="form-label">Status</label>
-                    <select id="status" name="status" class="form-select">
-                        <option value="">Semua status</option>
-                        @foreach ([
-            \App\Models\SptSrikandiWorkflow::STATUS_DRAFT => 'Draft',
-            \App\Models\SptSrikandiWorkflow::STATUS_WAITING => 'Menunggu Srikandi',
-            \App\Models\SptSrikandiWorkflow::STATUS_UPLOADED => 'Siap Diterbitkan',
-            \App\Models\SptSrikandiWorkflow::STATUS_PUBLISHED => 'Sudah Diterbitkan',
-        ] as $value => $label)
-                            <option value="{{ $value }}" @selected($filters['status'] === $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-4 col-md-auto d-grid">
-                    <button class="btn btn-outline-primary"><i class="bi bi-search"></i> Cari</button>
-                </div>
-            </form>
-        </div>
-
-        <div class="card-body table-responsive">
-            <table class="table table-hover align-middle responsive-records">
-                <thead>
-                    <tr>
-                        <th>Perjalanan</th>
-                        <th>Pegawai</th>
-                        <th>Status</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($workflows as $workflow)
-                        @php
-                            $travel = $workflow->travels->first();
-                            $employees = $workflow->travels->pluck('pegawai.nama_lengkap')->filter();
-                        @endphp
-                        <tr>
-                            <td data-label="Perjalanan">
-                                <span class="fw-semibold">
-                                    {{ $travel?->kota_tujuan ?? '-' }}
-                                    @if ($travel?->tgl_berangkat && $travel?->tgl_kembali)
-                                        <small class="d-block text-muted">
-                                            {{ $travel->tgl_berangkat->format('d/m/Y') }}–{{ $travel->tgl_kembali->format('d/m/Y') }}
-                                        </small>
-                                    @endif
-                                </span>
-                            </td>
-                            <td data-label="Pegawai">
-                                {{ $employees->take(2)->join(', ') ?: '-' }}
-                                @if ($employees->count() > 2)
-                                    <small class="d-block text-muted">+{{ $employees->count() - 2 }} pegawai</small>
+    <div class="officer-process-list">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-3">
+                <form method="GET" class="row g-2 align-items-end" data-live-filter="officer-spt-process">
+                    <div class="col-12 col-md">
+                        <label for="q" class="form-label">Cari SPT</label>
+                        <input id="q" name="q" class="form-control" value="{{ $filters['q'] }}"
+                            placeholder="Nomor Naskah, kode SPT, nama/NIP pegawai, atau tujuan">
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label for="status" class="form-label">Status Surat</label>
+                        <select id="status" name="status" class="form-select">
+                            <option value="">Semua status</option>
+                            @foreach (\App\Models\SptSrikandiWorkflow::statusLabels() as $value => $label)
+                                @if ($value !== \App\Models\SptSrikandiWorkflow::STATUS_PUBLISHED)
+                                    <option value="{{ $value }}" @selected($filters['status'] === $value)>{{ $label }}
+                                    </option>
                                 @endif
-                            </td>
-                            <td data-label="Status"><span class="badge text-bg-light border">{{ $workflow->label() }}</span>
-                            </td>
-                            <td data-label="Aksi">
-                                <a class="btn btn-sm btn-primary d-flex align-items-center justify-content-center gap-1"
-                                    href="{{ route('spt-srikandi.show', ['sptGroupId' => $workflow->spt_group_id]) }}">
-                                    <i class="bi bi-folder2-open"></i>
-                                    <span>Kelola</span>
-                                </a>
-                            </td>
-                        </tr>
-                    @empty
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-auto d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary live-filter-submit"><i class="bi bi-search"></i> Cari</button>
+                        @if ($filters['q'] !== '' || $filters['status'] !== '')
+                            <a class="btn btn-outline-secondary" href="{{ route('spt-srikandi.index') }}"
+                                data-live-filter-reset>Reset</a>
+                        @endif
+                    </div>
+                </form>
+                <p class="small text-muted mb-0 mt-3">{{ $workflows->total() }} surat yang masih diurus.</p>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover align-middle officer-records">
+                    <thead>
                         <tr>
-                            <td colspan="5">
-                                <x-ui.empty-state icon="send" title="Belum ada Draft SPT" />
-                            </td>
+                            <th>No SPT</th>
+                            <th>Pegawai</th>
+                            <th>Tujuan & Tanggal</th>
+                            <th>Status Surat</th>
+                            <th>Aksi</th>
                         </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @forelse ($workflows as $index => $workflow)
+                            @php
+                                $travel = $workflow->travels->first();
+                                $employees = $workflow->travels->pluck('pegawai.nama_lengkap')->filter();
+                                $detailParams = [
+                                    'sptGroupId' => $workflow->spt_group_id,
+                                    'from' => 'process',
+                                    'list' => request()->only(['q', 'status', 'page']),
+                                ];
+                            @endphp
+                            <tr class="officer-record">
+                                <td class="officer-record-number">
+                                    {{ $travel->spt_external_number ?: $travel->no_spt }}
+                                </td>
+                                <td class="officer-record-employees">
+                                    <div class="officer-record-value">
+                                        <ol class="mb-1 ps-3">
+                                            @foreach ($employees as $name)
+                                                <li>{{ $name }}</li>
+                                            @endforeach
+                                        </ol>
+                                        <small class="text-muted">{{ $employees->count() }} pegawai</small>
+                                    </div>
+                                </td>
+                                <td class="officer-record-travel">
+                                    <div class="officer-record-value">
+                                        <div class="fw-semibold">{{ $travel?->kota_tujuan ?? '-' }}</div>
+                                        <small
+                                            class="text-muted">{{ $travel?->tgl_berangkat?->format('d/m/Y') }}–{{ $travel?->tgl_kembali?->format('d/m/Y') }}</small>
+                                    </div>
+                                </td>
+                                <td class="officer-record-status">
+                                    <div class="officer-record-value">
+                                        <x-ui.spt-process-status :workflow="$workflow" />
+                                        @if ($workflow->status === \App\Models\SptSrikandiWorkflow::STATUS_WAITING)
+                                            <small class="d-block text-muted mt-1">Dikirim
+                                                {{ $workflow->submitted_at?->format('d/m/Y') ?? '-' }}</small>
+                                        @elseif ($workflow->status === \App\Models\SptSrikandiWorkflow::STATUS_PUBLISHED)
+                                            <small class="d-block text-muted mt-1">Dibagikan
+                                                {{ $workflow->published_at?->format('d/m/Y') ?? '-' }}</small>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="officer-record-actions">
+                                    <div class="officer-record-value">
+                                        <a class="btn btn-primary btn-kelola"
+                                            href="{{ route('travel-orders.show', $detailParams) }}">
+                                            <i class="bi bi-folder mr-2"></i>
+                                            <span class="mx-2">
+                                                Kelola SPT
+                                            </span>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5">
+                                    <x-ui.empty-state icon="clipboard-check" :title="$filters['q'] !== '' || $filters['status'] !== '' ? 'SPT tidak ditemukan' : 'Tidak ada SPT yang masih diurus'"
+                                        description="SPT yang sudah dibagikan dapat dilihat di Dashboard." />
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            @if ($workflows->hasPages())
+                <div class="card-footer bg-white">{{ $workflows->links() }}</div>
+            @endif
         </div>
-        @if ($workflows->hasPages())
-            <div class="card-footer bg-white">{{ $workflows->links() }}</div>
-        @endif
     </div>
 @endsection

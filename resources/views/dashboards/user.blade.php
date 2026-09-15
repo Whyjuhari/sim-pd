@@ -46,7 +46,7 @@
         </div>
         <div class="collapse {{ array_filter($filters) ? 'show' : '' }} d-xl-block" id="employeeHistoryFilters">
             <div class="card-body border-bottom">
-                <form method="GET" class="row g-3 align-items-end">
+                <form method="GET" class="row g-3 align-items-end" data-live-filter="employee-dashboard">
                     <div class="col-12 col-md-6 col-xl-3">
                         <label for="spt" class="form-label">Nomor SPT</label>
                         <input id="spt" name="spt" class="form-control" value="{{ $filters['spt'] ?? '' }}"
@@ -82,9 +82,10 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-6 col-md-3 col-xl-1 d-grid"><button class="btn btn-primary"><i
+                    <div class="col-6 col-md-3 col-xl-1 d-grid"><button class="btn btn-primary live-filter-submit"><i
                                 class="bi bi-search"></i><span class="visually-hidden">Terapkan filter</span></button></div>
                     <div class="col-6 col-md-3 col-xl-1 d-grid"><a href="{{ route('dashboard.user') }}"
+                            data-live-filter-reset
                             class="btn btn-outline-secondary" aria-label="Reset filter"><i
                                 class="bi bi-arrow-counterclockwise"></i></a></div>
                 </form>

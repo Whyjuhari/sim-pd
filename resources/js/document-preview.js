@@ -1,9 +1,8 @@
 import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 
-const previewTriggers = Array.from(document.querySelectorAll('[data-document-preview-trigger]'));
-const previewPanels = Array.from(document.querySelectorAll('[data-document-preview]'));
+const previewTriggers = () => Array.from(document.querySelectorAll('[data-document-preview-trigger]'));
 
-if (previewTriggers.length > 0) {
+{
     const TABLET_MAX_WIDTH = 1199.98;
     const ZOOM_MIN = 0.25;
     const ZOOM_MAX = 2.5;
@@ -53,7 +52,7 @@ if (previewTriggers.length > 0) {
     };
 
     const setTriggerAvailability = (disabled) => {
-        previewTriggers.forEach((trigger) => {
+        previewTriggers().forEach((trigger) => {
             trigger.disabled = disabled;
             trigger.setAttribute('aria-disabled', String(disabled));
         });
@@ -633,38 +632,69 @@ if (previewTriggers.length > 0) {
         }
     };
 
-    previewTriggers.forEach((trigger) => trigger.addEventListener('click', () => loadPreview(trigger)));
-    previewPanels.forEach((panel) => {
-        panelPart(panel, '[data-document-preview-close]')?.addEventListener('click', () => {
+    document.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-document-preview-trigger]');
+        if (trigger) {
+            loadPreview(trigger);
+            return;
+        }
+
+        const panel = event.target.closest('[data-document-preview]');
+        if (!panel) return;
+
+        if (event.target.closest('[data-document-preview-close]')) {
             if (panel === activePanel) closePreview();
-        });
-        panelPart(panel, '[data-document-preview-retry]')?.addEventListener('click', () => {
+            return;
+        }
+
+        if (event.target.closest('[data-document-preview-retry]')) {
             if (panel === activePanel && activeTrigger) loadPreview(activeTrigger, { force: true });
-        });
-        panelPart(panel, '[data-document-preview-open]')?.addEventListener('click', (event) => {
+            return;
+        }
+
+        if (event.target.closest('[data-document-preview-open]')) {
             if (panel === activePanel && activeViewerMode === 'pdfjs') {
                 event.preventDefault();
                 togglePdfFullscreen(panel);
             }
-        });
-        panelPart(panel, '[data-document-pdfjs-previous]')?.addEventListener('click', () => {
+            return;
+        }
+
+        if (event.target.closest('[data-document-pdfjs-previous]')) {
             if (panel === activePanel) goToPdfPage(panel, pdfCurrentPage - 1);
-        });
-        panelPart(panel, '[data-document-pdfjs-next]')?.addEventListener('click', () => {
+            return;
+        }
+
+        if (event.target.closest('[data-document-pdfjs-next]')) {
             if (panel === activePanel) goToPdfPage(panel, pdfCurrentPage + 1);
-        });
-        panelPart(panel, '[data-document-pdfjs-zoom-out]')?.addEventListener('click', () => {
+            return;
+        }
+
+        if (event.target.closest('[data-document-pdfjs-zoom-out]')) {
             if (panel === activePanel) changePdfZoom(panel, -1);
-        });
-        panelPart(panel, '[data-document-pdfjs-zoom-in]')?.addEventListener('click', () => {
+            return;
+        }
+
+        if (event.target.closest('[data-document-pdfjs-zoom-in]')) {
             if (panel === activePanel) changePdfZoom(panel, 1);
-        });
-        panelPart(panel, '[data-document-pdfjs-fit-width]')?.addEventListener('click', () => {
+            return;
+        }
+
+        if (event.target.closest('[data-document-pdfjs-fit-width]')) {
             if (panel === activePanel) fitPdfToWidth(panel);
-        });
-        panelPart(panel, '[data-document-pdfjs-print]')?.addEventListener('click', () => {
-            if (panel === activePanel) printPdfJsDocument(panel);
-        });
+            return;
+        }
+
+        if (event.target.closest('[data-document-pdfjs-print]') && panel === activePanel) {
+            printPdfJsDocument(panel);
+        }
+    });
+
+    document.addEventListener('sim:content-will-replace', (event) => {
+        const root = event.detail?.root;
+        if (activePanel && (!root || root.contains(activePanel))) {
+            closePreview({ restoreFocus: false });
+        }
     });
 
     window.addEventListener('resize', () => {

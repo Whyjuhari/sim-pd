@@ -2,7 +2,7 @@
 
 @section('title', 'Edit SPT - SIM-PD')
 @section('brand', 'Edit Surat Tugas')
-@section('page-subtitle', 'Perbarui data kolektif selama seluruh anggota masih berstatus Siap Berjalan.')
+@section('page-subtitle', 'Perbarui data kolektif sebelum konsep dikirim atau ketika SPT perlu diperbaiki.')
 
 @section('content')
 
@@ -44,7 +44,7 @@
 
                         <a href="{{ route('travel-orders.show', [
                             'sptGroupId' => $travel->spt_group_id,
-                        ]) }}"
+                        ] + $detailContext) }}"
                             class="btn btn-outline-secondary btn-sm">
                             <i class="bi bi-arrow-left"></i>
                             Kembali
@@ -65,9 +65,8 @@
                         diterapkan kepada seluruh pegawai
                         dalam SPT ini.
 
-                        SPT hanya dapat diubah selama seluruh
-                        pegawai masih berstatus
-                        <strong>Siap Berjalan</strong>.
+                        SPT hanya dapat diubah sebelum konsep dikirim
+                        atau ketika statusnya <strong>Perlu Diperbaiki</strong>.
 
                     </div>
 
@@ -75,7 +74,7 @@
                     <form
                         action="{{ route('travel-orders.update', [
                             'sptGroupId' => $travel->spt_group_id,
-                        ]) }}"
+                        ] + $detailContext) }}"
                         method="POST">
 
                         @csrf
@@ -98,7 +97,7 @@
                                     class="form-control" maxlength="50" required>
                             @else
                                 <input type="text" value="{{ $travel->sptDocumentNumber() }}" class="form-control bg-light" readonly>
-                                <div class="form-text">Parameter Srikandi dikunci dan tetap digunakan pada Surat Tugas.</div>
+                                <div class="form-text">Nomor naskah tetap berupa parameter karena diproses melalui SRIKANDI.</div>
                             @endif
                         </div>
 
@@ -410,7 +409,7 @@
 
                             <a href="{{ route('travel-orders.show', [
                                 'sptGroupId' => $travel->spt_group_id,
-                            ]) }}"
+                            ] + $detailContext) }}"
                                 class="btn btn-secondary">
                                 Batal
                             </a>

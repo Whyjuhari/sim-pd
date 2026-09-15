@@ -22,7 +22,7 @@
                 <div class="card-body p-4">
                     <form action="{{ route('travel-orders.store') }}" method="post">
                         @csrf
-                        <h6 class="text-muted border-bottom pb-2 mb-3">Data Surat & Tujuan</h6>
+                        <h6 class="text-muted border-bottom pb-2 mb-3">1. Template dan Cara Penerbitan</h6>
                         <div class="mb-3">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
                                 <label class="form-label fw-bold mb-0">Template SPT</label>
@@ -41,27 +41,26 @@
                         </div>
 
                         <fieldset class="mb-3" data-spt-number-mode>
-                            <legend class="form-label fw-bold mb-2">Penomoran Naskah</legend>
+                            <legend class="form-label fw-bold mb-2">Cara Penerbitan</legend>
                             <div class="d-flex flex-wrap gap-3">
                                 <div class="form-check">
                                     <input id="numberModeExternal" class="form-check-input" type="radio"
                                         name="spt_number_mode"
                                         value="{{ \App\Models\PerjalananDinas::NUMBER_MODE_EXTERNAL }}"
                                         @checked($numberMode === \App\Models\PerjalananDinas::NUMBER_MODE_EXTERNAL)>
-                                    <label class="form-check-label" for="numberModeExternal">Nomor dari Srikandi</label>
+                                    <label class="form-check-label" for="numberModeExternal">Proses lewat SRIKANDI</label>
                                 </div>
                                 <div class="form-check">
                                     <input id="numberModeManual" class="form-check-input" type="radio"
                                         name="spt_number_mode" value="{{ \App\Models\PerjalananDinas::NUMBER_MODE_MANUAL }}"
                                         @checked($numberMode === \App\Models\PerjalananDinas::NUMBER_MODE_MANUAL)>
-                                    <label class="form-check-label" for="numberModeManual">Nomor Manual</label>
+                                    <label class="form-check-label" for="numberModeManual">Isi nomor sendiri</label>
                                 </div>
                             </div>
                             <div class="mt-2" data-spt-number-parameter @if ($numberMode !== \App\Models\PerjalananDinas::NUMBER_MODE_EXTERNAL) hidden @endif>
                                 <input type="text" class="form-control bg-light"
                                     value="{{ \App\Models\PerjalananDinas::NUMBER_PLACEHOLDER }}" readonly>
-                                {{-- <div class="form-text">Parameter ini tetap berada pada Surat Tugas dan akan diisi oleh
-                                    Srikandi.</div> --}}
+                                <div class="form-text">SPT disimpan sebagai konsep. Nomor naskah dan tanda tangan akan diproses di SRIKANDI.</div>
                             </div>
                             <div class="mt-2" data-spt-number-manual @if ($numberMode !== \App\Models\PerjalananDinas::NUMBER_MODE_MANUAL) hidden @endif>
                                 <label for="no_spt" class="visually-hidden">Nomor SPT manual</label>
@@ -76,6 +75,7 @@
                                 <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror
                         </fieldset>
+                        <h6 class="text-muted border-bottom pb-2 mb-3 mt-4">2. Dasar Surat</h6>
                         <div class="mb-3"><label class="form-label fw-bold">Menimbang</label><input type="text"
                                 name="menimbang" value="{{ old('menimbang') }}" class="form-control" required></div>
                         @if ($selectedTemplate['uses_memo'])
@@ -95,7 +95,7 @@
                             <textarea name="maksud_perjalanan" class="form-control" rows="3" required>{{ old('maksud_perjalanan') }}</textarea>
                         </div>
 
-                        <h6 class="text-muted border-bottom pb-2 mb-3 mt-4">Daftar Pegawai yang Berangkat</h6>
+                        <h6 class="text-muted border-bottom pb-2 mb-3 mt-4">3. Pegawai yang Ditugaskan</h6>
                         <div class="mb-4 spt-searchable-field spt-employee-dropdown-field">
                             <label id="employeeSelectLabel" for="employeeSelect" class="form-label fw-bold">Pegawai</label>
                             <select id="employeeSelect" name="user_ids[]" class="form-select" multiple required
@@ -128,7 +128,7 @@
                             @enderror
                         </div>
 
-                        <h6 class="text-muted border-bottom pb-2 mb-3">Detail Waktu & Anggaran</h6>
+                        <h6 class="text-muted border-bottom pb-2 mb-3">4. Tujuan, Jadwal, dan Anggaran</h6>
                         <div class="row">
                             <div class="col-md-6 mb-3 spt-searchable-field"><label id="destinationSelectLabel"
                                     for="destinationSelect" class="fw-bold mb-2">Kota Tujuan</label>
@@ -199,7 +199,7 @@
                         <x-ui.spt-cost-preview />
                         <div class="form-action-bar"><a href="{{ route('dashboard.officer') }}"
                                 class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Kembali</a><button
-                                class="btn btn-identity"><i class="bi bi-check-circle-fill"></i> Simpan Semua SPT</button>
+                                class="btn btn-identity"><i class="bi bi-check-circle-fill"></i> Simpan SPT</button>
                         </div>
                     </form>
                 </div>
