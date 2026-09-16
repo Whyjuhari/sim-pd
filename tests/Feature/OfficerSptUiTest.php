@@ -46,7 +46,7 @@ class OfficerSptUiTest extends TestCase
         return $travel;
     }
 
-    public function test_dashboard_and_process_list_are_separate_and_keep_manual_and_legacy_letters(): void
+    public function test_dashboard_summary_counts_groups_and_process_list_stays_scoped_to_unfinished_workflows(): void
     {
         $officer = User::factory()->role(User::ROLE_OFFICER)->create();
         $pending = collect([
@@ -57,19 +57,69 @@ class OfficerSptUiTest extends TestCase
         $manual = $this->letter();
         $legacy = $this->letter();
         $legacy->update(['spt_number_mode' => PerjalananDinas::NUMBER_MODE_EXTERNAL, 'no_spt' => PerjalananDinas::NUMBER_PLACEHOLDER]);
+        $pendingVerification = $this->letter();
+        $pendingVerification->update(['status' => PerjalananDinas::STATUS_PENDING]);
+        $rejected = $this->letter();
+        $rejected->update(['status' => PerjalananDinas::STATUS_REJECTED]);
+        $approved = $this->letter();
+        $approved->update(['status' => PerjalananDinas::STATUS_APPROVED]);
+        $collectiveMember = $manual->replicate();
+        $collectiveMember->user_id = User::factory()->create()->id;
+        $collectiveMember->save();
 
         $dashboard = $this->actingAs($officer)->get(route('dashboard.officer'))->assertOk();
-        $dashboard->assertViewHas('totalSpt', 3)
-            ->assertDontSee('officer-work-summary', false)
+        $dashboard->assertViewHas('totalSpt', 10)
+            ->assertViewHas('draftSptCount', 4)
+            ->assertViewHas('runningSptCount', 3)
+            ->assertSeeText('Total Surat Tugas')
+            ->assertSeeText('SPT Sedang Diproses')
+            ->assertSeeText('SPT Berjalan')
+            ->assertSeeText('Dashboard SPT')
+            ->assertSeeText('Daftar Seluruh Surat Tugas')
+            ->assertSeeText('Status SPT')
+            ->assertDontSeeText('Jumlah Draft SPT')
+            ->assertSee('data-live-filter-link', false)
+            ->assertSee(route('dashboard.officer', ['status' => PerjalananDinas::STATUS_DRAFT]), false)
+            ->assertSee(route('dashboard.officer', ['status' => PerjalananDinas::STATUS_READY]), false)
             ->assertDontSee('name="process_status"', false);
+        $dashboardDom = new \DOMDocument();
+        @$dashboardDom->loadHTML('<?xml encoding="UTF-8">'.$dashboard->getContent());
+        $dashboardXpath = new \DOMXPath($dashboardDom);
+        $this->assertSame(1, $dashboardXpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " metric-card ")][.//span[normalize-space(.)="Total Surat Tugas"]]')->length);
+        $this->assertSame(0, $dashboardXpath->query('//a[contains(concat(" ", normalize-space(@class), " "), " metric-card ")][.//span[normalize-space(.)="Total Surat Tugas"]]')->length);
+        $this->assertSame(2, substr_count($dashboard->getContent(), 'data-live-filter-link'));
+        $this->assertSame(10, $dashboardXpath->query('//table//a[normalize-space(.)="Detail"]')->length);
+        $this->assertSame(0, $dashboardXpath->query('//table//a[normalize-space(.)="Kelola Proses"]')->length);
+        $this->assertSame(6, $dashboardXpath->query('//table//button[@data-document-preview-trigger]')->length);
         $shown = $dashboard->viewData('sptGroups')->getCollection()->pluck('travel.id')->sort()->values()->all();
-        $this->assertSame(collect([$published->id, $manual->id, $legacy->id])->sort()->values()->all(), $shown);
-        foreach ($pending as $travel) {
-            $dashboard->assertDontSee($travel->spt_internal_reference, false);
-        }
+        $this->assertSame(
+            $pending->concat([
+                $published, $manual, $legacy, $pendingVerification, $rejected, $approved,
+            ])->pluck('id')->sort()->values()->all(),
+            $shown
+        );
+
+        $draftDashboard = $this->get(route('dashboard.officer', ['status' => PerjalananDinas::STATUS_DRAFT]))->assertOk();
+        $this->assertSame(4, $draftDashboard->viewData('sptGroups')->total());
+        $draftDom = new \DOMDocument();
+        @$draftDom->loadHTML('<?xml encoding="UTF-8">'.$draftDashboard->getContent());
+        $draftXpath = new \DOMXPath($draftDom);
+        $this->assertSame(4, $draftXpath->query('//table//a[normalize-space(.)="Detail"]')->length);
+        $this->assertSame(0, $draftXpath->query('//table//button[@data-document-preview-trigger]')->length);
+        $this->assertSame(
+            $pending->pluck('id')->sort()->values()->all(),
+            $draftDashboard->viewData('sptGroups')->getCollection()->pluck('travel.id')->sort()->values()->all()
+        );
+
+        $runningDashboard = $this->get(route('dashboard.officer', ['status' => PerjalananDinas::STATUS_READY]))->assertOk();
+        $this->assertSame(3, $runningDashboard->viewData('sptGroups')->total());
+        $this->assertStringContainsString(
+            'a[data-live-filter-link]',
+            file_get_contents(resource_path('js/live-filters.js'))
+        );
 
         $process = $this->get(route('spt-srikandi.index'))->assertOk();
-        $process->assertDontSee('officer-process-tabs', false)->assertSee('Buka SPT');
+        $process->assertDontSee('officer-process-tabs', false)->assertSee('Kelola SPT');
         $this->assertSame(4, $process->viewData('workflows')->total());
         $process->assertDontSee($published->spt_internal_reference, false)
             ->assertDontSee($manual->no_spt, false)->assertDontSee($legacy->spt_internal_reference, false);

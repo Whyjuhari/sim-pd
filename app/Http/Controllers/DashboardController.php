@@ -74,12 +74,10 @@ class DashboardController extends Controller
         if ($processStatus !== '' && $processStatus !== SptSrikandiWorkflow::STATUS_PUBLISHED) {
             return redirect()->route('spt-srikandi.index', ['q' => $search, 'status' => $processStatus]);
         }
-        $availableSpts = PerjalananDinas::query()
-            ->whereNotNull('transaksi_perjadin.spt_group_id')
-            ->where(fn ($query) => $query->whereDoesntHave('sptSrikandiWorkflow')
-                ->orWhereHas('sptSrikandiWorkflow', fn ($workflow) => $workflow->where('status', SptSrikandiWorkflow::STATUS_PUBLISHED)));
+        $allSpts = PerjalananDinas::query()
+            ->whereNotNull('transaksi_perjadin.spt_group_id');
 
-        $groupPages = (clone $availableSpts)
+        $groupPages = (clone $allSpts)
             ->select('transaksi_perjadin.spt_group_id')
             ->join('users', 'users.id', '=', 'transaksi_perjadin.user_id')
             ->whereNotNull('transaksi_perjadin.spt_group_id')
@@ -122,7 +120,7 @@ class DashboardController extends Controller
 
         return view('dashboards.officer', [
             'sptGroups' => $groupPages,
-            'destinationOptions' => (clone $availableSpts)
+            'destinationOptions' => (clone $allSpts)
                 ->whereNotNull('kota_tujuan')
                 ->distinct()->orderBy('kota_tujuan')->pluck('kota_tujuan'),
             'filters' => ['q' => $search, 'status' => $status, 'destination' => $destination],
@@ -133,7 +131,15 @@ class DashboardController extends Controller
                 PerjalananDinas::STATUS_REJECTED => 'Perlu Revisi',
                 PerjalananDinas::STATUS_DRAFT => 'Draft SPT',
             ],
-            'totalSpt' => (clone $availableSpts)
+            'totalSpt' => (clone $allSpts)
+                ->distinct()
+                ->count('spt_group_id'),
+            'draftSptCount' => (clone $allSpts)
+                ->where('transaksi_perjadin.status', PerjalananDinas::STATUS_DRAFT)
+                ->distinct()
+                ->count('spt_group_id'),
+            'runningSptCount' => (clone $allSpts)
+                ->where('transaksi_perjadin.status', PerjalananDinas::STATUS_READY)
                 ->distinct()
                 ->count('spt_group_id'),
         ]);

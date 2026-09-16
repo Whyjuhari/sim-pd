@@ -464,7 +464,7 @@ body {
     margin-bottom: .28rem;
     padding: .7rem .8rem;
     color: #cfdeeb;
-    border-radius: .8rem;
+    /* border-radius: .8rem; */
     font-weight: 600;
 }
 
@@ -744,6 +744,25 @@ body {
 .metric-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--sim-shadow-hover);
+}
+
+.metric-card-link {
+    display: block;
+    text-decoration: none;
+}
+
+.metric-card-link:hover {
+    text-decoration: none;
+}
+
+.metric-card-link:focus-visible {
+    outline: 3px solid color-mix(in srgb, currentColor 38%, transparent);
+    outline-offset: 3px;
+}
+
+.metric-card-link.is-active {
+    border-color: currentColor;
+    box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 14%, transparent), var(--sim-shadow);
 }
 
 .metric-card-body {
@@ -1162,9 +1181,20 @@ body {
     transition: background-color .16s ease;
 }
 
+
 .app-body .table-hover>tbody>tr:hover>* {
     --bs-table-bg-state: #f7fafc;
 }
+
+.app-body .table-hover>tbody>tr:nth-child(even of :not(.document-preview-row))>* {
+    --bs-table-bg-type: #e9ebed;
+}
+
+/* Hover dibuat sedikit lebih terlihat */
+.app-body .table-hover>tbody>tr:not(.document-preview-row):hover>* {
+    --bs-table-bg-state: #edf3f7;
+}
+
 
 .app-body .pagination {
     margin-bottom: 0;
@@ -1895,6 +1925,14 @@ html.live-filter-loading::after {
 }
 
 @media (max-width: 1199.98px) {
+    .responsive-records tbody>tr:nth-child(even of :not(.document-preview-row)) {
+        background: #f7fafc;
+    }
+
+    .responsive-records tbody>.document-preview-row {
+        background: transparent;
+    }
+
     .document-preview-open-label-desktop {
         display: none;
     }
@@ -3032,10 +3070,10 @@ html.live-filter-loading::after {
     outline-offset: 3px;
 }
 
-.officer-process-list .btn,
+/* .officer-process-list .btn,
 .spt-process-card .btn {
     min-height: 44px;
-}
+} */
 
 .officer-process-list .officer-record-value,
 .officer-spt-summary,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Documents\SptPdfSignatureVerifier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
@@ -9,6 +10,10 @@ use Throwable;
 
 class SystemHealthController extends Controller
 {
+    public function __construct(
+        private readonly SptPdfSignatureVerifier $signatureVerifier,
+    ) {}
+
     public function __invoke(): View
     {
         $database = $this->databaseIsAvailable();
@@ -16,6 +21,7 @@ class SystemHealthController extends Controller
         $sptTemplateStorage = Storage::disk('local')->path('spt-templates');
         $templates = collect(config('sim_pd.documents.templates', []));
         $libreOffice = (string) config('sim_pd.documents.libreoffice.binary');
+        $pdfSignature = $this->signatureVerifier->health();
 
         $checks = [
             ['label' => 'Database', 'ok' => $database, 'message' => $database ? 'Koneksi tersedia' : 'Koneksi gagal'],
@@ -40,6 +46,11 @@ class SystemHealthController extends Controller
                 'label' => 'LibreOffice',
                 'ok' => is_file($libreOffice),
                 'message' => is_file($libreOffice) ? 'Binary tersedia' : 'Binary belum tersedia',
+            ],
+            [
+                'label' => 'Pemeriksa tanda tangan elektronik',
+                'ok' => $pdfSignature['ok'],
+                'message' => $pdfSignature['message'],
             ],
         ];
 

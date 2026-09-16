@@ -1,8 +1,12 @@
 @php
     $role = auth()->user()->role;
-    $officerDetail = $role === \App\Models\User::ROLE_OFFICER && request()->routeIs('travel-orders.show', 'travel-orders.edit');
-    $officerProcessDetail = $officerDetail && isset($srikandiWorkflow) && $srikandiWorkflow
-        && $srikandiWorkflow->status !== \App\Models\SptSrikandiWorkflow::STATUS_PUBLISHED;
+    $officerDetail =
+        $role === \App\Models\User::ROLE_OFFICER && request()->routeIs('travel-orders.show', 'travel-orders.edit');
+    $officerProcessDetail =
+        $officerDetail &&
+        isset($srikandiWorkflow) &&
+        $srikandiWorkflow &&
+        $srikandiWorkflow->status !== \App\Models\SptSrikandiWorkflow::STATUS_PUBLISHED;
 @endphp
 <div class="app-sidebar-content">
     <div class="app-sidebar-heading">Ruang kerja</div>
@@ -25,7 +29,8 @@
                 @endif
             </a>
         @else
-            <a class="nav-link {{ request()->routeIs('dashboard.*') || ($officerDetail && !$officerProcessDetail) ? 'active' : '' }}" href="{{ route('dashboard') }}">
+            <a class="nav-link {{ request()->routeIs('dashboard.*') || ($officerDetail && !$officerProcessDetail) ? 'active' : '' }}"
+                href="{{ route('dashboard') }}">
                 <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
             </a>
 
@@ -42,11 +47,8 @@
                     href="{{ route('admin.system-health') }}"><i class="bi bi-heart-pulse-fill"></i><span>Kesehatan
                         Sistem</span></a>
             @elseif($role === \App\Models\User::ROLE_OFFICER)
-                <a class="nav-link {{ request()->routeIs('travel-orders.create') ? 'active' : '' }}"
-                    href="{{ route('travel-orders.create') }}"><i class="bi bi-file-earmark-plus-fill"></i><span>Buat
-                        SPT</span></a>
-                <a class="nav-link {{ request()->routeIs('spt-srikandi.*') || $officerProcessDetail ? 'active' : '' }}"
-                    href="{{ route('spt-srikandi.index') }}"><i class="bi bi-send-check-fill"></i><span>Proses
+                <a class="nav-link {{ request()->routeIs('spt-srikandi.*') || request()->routeIs('travel-orders.create') || $officerProcessDetail ? 'active' : '' }}"
+                    href="{{ route('spt-srikandi.index') }}"><i class="bi bi-send-check-fill"></i><span>Kelola
                         SPT</span>
                     @if (($navigationWorkCount ?? 0) > 0)
                         <span class="nav-work-badge"

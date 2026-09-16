@@ -8,6 +8,7 @@ SIM-PD adalah sistem pengelolaan perjalanan dinas berbasis Laravel 13 dan Bootst
 - Composer 2 dan Node.js/npm.
 - MySQL 8 atau MariaDB yang kompatibel.
 - LibreOffice pada server yang akan membuat PDF.
+- Python 3.10 atau lebih baru dengan `pyHanko` untuk memeriksa integritas tanda tangan elektronik PDF resmi.
 
 ## Instalasi lokal
 
@@ -68,7 +69,47 @@ LIBREOFFICE_BINARY=/usr/bin/libreoffice
 LIBREOFFICE_TIMEOUT=120
 ```
 
-Template berada di `resources/documents`. File sementara dan hasil PDF berada di `storage/app/private/documents` dan dibersihkan setelah respons dikirim. Menu admin **Kesehatan Sistem** memeriksa database, storage privat, template, dan binary LibreOffice tanpa menampilkan path internal.
+Template berada di `resources/documents`. File sementara dan hasil PDF berada di `storage/app/private/documents` dan dibersihkan setelah respons dikirim. Menu admin **Kesehatan Sistem** memeriksa database, storage privat, template, binary LibreOffice, dan pemeriksa tanda tangan elektronik tanpa menampilkan path internal.
+
+### Pemeriksaan tanda tangan elektronik PDF
+
+PDF resmi diperiksa berdasarkan tanda tangan digital yang tertanam di dalam PDF,
+bukan berdasarkan teks `${ttd}` atau keberadaan gambar/QR. Siapkan virtual
+environment Python terpisah agar dependensi tidak bercampur dengan paket sistem.
+
+Windows:
+
+```powershell
+python -m venv .venv-pdf-signature
+.\.venv-pdf-signature\Scripts\python.exe -m pip install -r scripts\requirements-pdf-signature.txt
+```
+
+Linux/VPS (sesuaikan lokasi aplikasi dan virtual environment):
+
+```bash
+python3 -m venv /opt/sim-pd-pdf-signature
+/opt/sim-pd-pdf-signature/bin/python -m pip install -r /var/www/sim-pd/scripts/requirements-pdf-signature.txt
+```
+
+Kemudian arahkan PHP ke interpreter tersebut:
+
+```dotenv
+PDF_SIGNATURE_VERIFY=true
+PDF_SIGNATURE_PYTHON_BINARY=/opt/sim-pd-pdf-signature/bin/python
+PDF_SIGNATURE_TIMEOUT=30
+PDF_SIGNATURE_REQUIRE_TRUSTED=false
+PDF_SIGNATURE_ALLOW_FETCHING=false
+PDF_SIGNATURE_TRUST_ROOTS=
+```
+
+Konfigurasi default memeriksa integritas kriptografis, cakupan tanda tangan, dan
+perubahan PDF setelah penandatanganan. Untuk turut mewajibkan rantai sertifikat
+tepercaya, pasang sertifikat root resmi BSrE pada server, isi path-nya di
+`PDF_SIGNATURE_TRUST_ROOTS` (pisahkan beberapa path dengan koma), lalu ubah
+`PDF_SIGNATURE_REQUIRE_TRUSTED=true`. Jangan mengambil sertifikat root dari
+sumber yang tidak resmi. Setelah mengubah `.env`, jalankan `php artisan
+optimize:clear` lalu `php artisan optimize`, dan periksa menu **Kesehatan
+Sistem**.
 
 ## Migrasi database lama
 

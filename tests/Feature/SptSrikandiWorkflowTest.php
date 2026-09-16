@@ -171,7 +171,7 @@ class SptSrikandiWorkflowTest extends TestCase
         $this->actingAs($officer)->get(route('travel-orders.show', [
             'sptGroupId' => $travel->spt_group_id,
         ]))->assertOk()
-            ->assertSee('Nomor Naskah berhasil dibaca')
+            ->assertSee("Nomor Naskah {$officialNumber} berhasil dibaca")
             ->assertSee($officialNumber, false)
             ->assertSee('Bagikan ke Pegawai');
         $this->actingAs($officer)->get(route('spt-srikandi.index', [

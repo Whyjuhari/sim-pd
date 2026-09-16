@@ -28,6 +28,24 @@ return [
             'binary' => env('PDFTOTEXT_BINARY', 'pdftotext'),
             'timeout' => (int) env('PDFTOTEXT_TIMEOUT', 15),
         ],
+        'pdf_signature' => [
+            'enabled' => filter_var(env('PDF_SIGNATURE_VERIFY', true), FILTER_VALIDATE_BOOL),
+            'python_binary' => env('PDF_SIGNATURE_PYTHON_BINARY', 'python'),
+            'script' => base_path('scripts/verify_pdf_signature.py'),
+            'timeout' => (int) env('PDF_SIGNATURE_TIMEOUT', 30),
+            'require_trusted' => filter_var(
+                env('PDF_SIGNATURE_REQUIRE_TRUSTED', false),
+                FILTER_VALIDATE_BOOL
+            ),
+            'allow_fetching' => filter_var(
+                env('PDF_SIGNATURE_ALLOW_FETCHING', false),
+                FILTER_VALIDATE_BOOL
+            ),
+            'trust_roots' => array_values(array_filter(array_map(
+                'trim',
+                explode(',', (string) env('PDF_SIGNATURE_TRUST_ROOTS', ''))
+            ))),
+        ],
         'report_documentation' => [
             'max_files' => 2,
             'max_kilobytes_per_file' => 5120,

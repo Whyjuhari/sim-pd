@@ -1,10 +1,9 @@
 @extends('layouts.app')
 @section('title', 'Proses SPT - SIM-PD')
-@section('brand', 'Proses SPT')
-@section('page-subtitle', 'Surat yang masih diurus sebelum dibagikan kepada pegawai.')
+@section('brand', 'Surat Perintah Tugas')
 @section('page-actions')
     <a href="{{ route('travel-orders.create') }}" class="btn btn-identity">
-        <i class="bi bi-plus-circle-fill"></i> Buat SPT</a>
+        <i class="bi bi-plus-circle-fill"></i> Buat Draft SPT</a>
 @endsection
 
 @section('content')
@@ -17,7 +16,7 @@
                         <input id="q" name="q" class="form-control" value="{{ $filters['q'] }}"
                             placeholder="Nomor Naskah, kode SPT, nama/NIP pegawai, atau tujuan">
                     </div>
-                    <div class="col-12 col-md-4">
+                    <div class="col-8 col-md-4 col-xl-3">
                         <label for="status" class="form-label">Status Surat</label>
                         <select id="status" name="status" class="form-select">
                             <option value="">Semua status</option>
@@ -29,8 +28,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-12 col-md-auto d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-primary live-filter-submit"><i class="bi bi-search"></i> Cari</button>
+                    <div class="col-4 col-md-auto d-grid">
                         @if ($filters['q'] !== '' || $filters['status'] !== '')
                             <a class="btn btn-outline-secondary" href="{{ route('spt-srikandi.index') }}"
                                 data-live-filter-reset>Reset</a>
@@ -43,7 +41,7 @@
                 <table class="table table-hover align-middle officer-records">
                     <thead>
                         <tr>
-                            <th>No SPT</th>
+                            <th>Nomor SPT</th>
                             <th>Pegawai</th>
                             <th>Tujuan & Tanggal</th>
                             <th>Status Surat</th>
@@ -65,15 +63,13 @@
                                 <td class="officer-record-number">
                                     {{ $travel->spt_external_number ?: $travel->no_spt }}
                                 </td>
+
                                 <td class="officer-record-employees">
-                                    <div class="officer-record-value">
-                                        <ol class="mb-1 ps-3">
-                                            @foreach ($employees as $name)
-                                                <li>{{ $name }}</li>
-                                            @endforeach
-                                        </ol>
-                                        <small class="text-muted">{{ $employees->count() }} pegawai</small>
-                                    </div>
+                                    @foreach ($employees as $name)
+                                        <span class="d-block">
+                                            {{ $name }}
+                                        </span>
+                                    @endforeach
                                 </td>
                                 <td class="officer-record-travel">
                                     <div class="officer-record-value">

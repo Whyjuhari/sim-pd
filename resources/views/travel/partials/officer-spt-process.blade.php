@@ -8,22 +8,32 @@
 
 <div class="officer-spt-detail" data-officer-spt-process>
     <section class="card mb-3 officer-spt-summary" aria-label="Identitas SPT">
-        <div class="card-body">
-            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
-                <div><span class="small text-muted">No Naskah</span>
-                    <div class="fw-bold text-identity">{{ $travel->spt_external_number ?: $travel->no_spt }}</div>
-                </div>
-                <x-ui.spt-process-status :workflow="$srikandiWorkflow" />
-            </div>
-            <span class="mb-1">Tujuan : {{ $travel->kota_tujuan }}</span>
-            <p class="mb-0">{{ $travel->tgl_berangkat->translatedFormat('d F Y') }} –
-                {{ $travel->tgl_kembali->translatedFormat('d F Y') }}</p>
-            <span class="small text-muted">{{ $travel->lama_hari }} hari · {{ $travels->count() }} pegawai</span>
+        <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h6 class="mb-0 fw-bold text-identity"><i class="bi bi-file-earmark-check"></i> Ringkasan</h6>
+            <x-ui.spt-process-status :workflow="$srikandiWorkflow" />
         </div>
-
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="text-muted small">Nomor SPT</div>
+                    <div class="fw-semibold">{{ $travel->spt_external_number ?: $travel->no_spt }}</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Tujuan dan tanggal</div>
+                    <div class="fw-semibold">{{ $travel->kota_tujuan }}</div>
+                    <small class="text-muted">{{ $travel->tgl_berangkat->translatedFormat('d/m/Y') }} –
+                        {{ $travel->tgl_kembali->translatedFormat('d/m/Y') }}</small> <br>
+                    <span class="small text-muted">{{ $travel->lama_hari }} hari · {{ $travels->count() }}
+                        pegawai</span>
+                </div>
+            </div>
+        </div>
     </section>
 
     <section class="card mb-3 spt-process-card" aria-label="Tindakan SPT">
+        <div class="card-header bg-white">
+            <h6 class="mb-0 fw-bold text-identity"><i class="bi bi-arrow-right-circle"></i> Tindakan</h6>
+        </div>
         <div class="card-body">
             @if (in_array(
                     $srikandiWorkflow->status,
@@ -36,16 +46,17 @@
                 <p>{{ $needsRevision ? 'Perbaiki data melalui Rincian SPT di bawah, lalu periksa dan unduh Word.' : 'Periksa draft dengan unduh file Word.' }}
                 </p>
                 <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-outline-primary" data-document-preview-trigger
+                    <button type="button" class="btn btn-outline-secondary" data-document-preview-trigger
                         data-document-url="{{ route('documents.surat-tugas', ['id' => $travel->id]) }}"
                         data-document-label="Konsep Surat Perintah Tugas"
                         data-document-filename="Konsep_SPT_{{ $safeReference }}.pdf"
-                        aria-controls="{{ $processPreviewId }}" aria-expanded="false"><i class="bi bi-eye"></i> Lihat
+                        aria-controls="{{ $processPreviewId }}" aria-expanded="false"><i class="bi bi-archive"></i>
+                        Lihat
                         Draft</button>
                     <a class="btn {{ $conceptReady ? 'btn-outline-primary' : 'btn-primary' }} d-inline-flex align-items-center"
                         data-spt-concept-download data-download-name="Konsep_SPT_{{ $safeReference }}.docx"
                         href="{{ route('spt-srikandi.concept-document', $groupParams) }}"><i
-                            class="bi bi-file-earmark-word"></i> <span class="mx-1">Unduh Draft</span></a>
+                            class="bi bi-file-earmark-pdf"></i> <span class="mx-1">Unduh Draft</span></a>
                 </div>
                 <p class="small text-muted mt-2 mb-0" data-spt-concept-status aria-live="polite"></p>
                 <noscript>
@@ -83,24 +94,6 @@
 
                     </div>
                 </form>
-                {{-- @if ($latestProcessVersion)
-                    <details class="mt-3" @if ($errors->has('revision_reason')) open @endif>
-                        <summary class="text-warning-emphasis">Perlu Diperbaiki</summary>
-                        <form method="POST" class="mt-2" action="{{ route('spt-srikandi.revision', $groupParams) }}"
-                            data-sim-confirm data-sim-confirm-title="Buka kembali data SPT untuk diperbaiki?"
-                            data-sim-confirm-text="Riwayat file Word yang sudah dikirim tetap tersimpan."
-                            data-sim-confirm-button="Ya, perbaiki">
-                            @csrf
-                            <label for="revision_reason" class="form-label">Alasan perbaikan</label>
-                            <textarea id="revision_reason" name="revision_reason" class="form-control" rows="3" minlength="5"
-                                maxlength="1000" required>{{ old('revision_reason') }}</textarea>
-                            @error('revision_reason')
-                                <div class="text-danger small">{{ $message }}</div>
-                            @enderror
-                            <button class="btn btn-warning mt-2">Simpan Alasan</button>
-                        </form>
-                    </details>
-                @endif --}}
             @else
                 @if ($processComplete)
                     <p class="small text-muted">
@@ -112,52 +105,71 @@
                         @endif.
                     </p>
                 @endif
-                <p>Periksa semua data dengan benar sebelum dibagikan.</p>
-                <button type="button" class="btn btn-primary" data-document-preview-trigger
-                    @if (session('open_official_preview') && !$processComplete) data-spt-open-preview @endif
-                    data-document-url="{{ route('spt-srikandi.document', $groupParams) }}"
-                    data-document-label="SPT yang Sudah Jadi" data-document-filename="SPT_{{ $safeReference }}.pdf"
-                    aria-controls="{{ $processPreviewId }}" aria-expanded="false"><i class="bi bi-eye"></i> Lihat
-                    SPT</button>
-                @if ($srikandiWorkflow->official_original_name)
-                    <p class="small text-muted mt-2 mb-0">{{ $srikandiWorkflow->official_original_name }}</p>
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-primary" data-document-preview-trigger
+                        @if (session('open_official_preview') && !$processComplete) data-spt-open-preview @endif
+                        data-document-url="{{ route('spt-srikandi.document', $groupParams) }}"
+                        data-document-label="SPT yang Sudah Jadi" data-document-filename="SPT_{{ $safeReference }}.pdf"
+                        aria-controls="{{ $processPreviewId }}" aria-expanded="false">
+                        <i class="bi bi-file-earmark-pdf"></i>
+                        Lihat SPT
+                    </button>
+
+                    @if ($srikandiWorkflow->status === \App\Models\SptSrikandiWorkflow::STATUS_UPLOADED)
+                        <form method="POST" action="{{ route('spt-srikandi.publish', $groupParams) }}" class="m-0"
+                            data-sim-confirm data-sim-confirm-title="Bagikan SPT kepada Pegawai?"
+                            data-sim-confirm-text="SPT akan tersedia bagi seluruh pegawai dan file tidak dapat diganti lagi."
+                            data-sim-confirm-button="Ya, bagikan">
+                            @csrf
+
+                            <button class="btn btn-success">
+                                <i class="bi bi-people"></i>
+                                Bagikan ke Pegawai
+                            </button>
+                        </form>
+                    @endif
+                </div>
+                @if ($srikandiWorkflow->status === \App\Models\SptSrikandiWorkflow::STATUS_UPLOADED)
+                    <details class="spt-replace-file" @if ($errors->has('official_pdf')) open @endif>
+                        <summary class="text-primary">Ganti File</summary>
+
+                        <form method="POST" enctype="multipart/form-data"
+                            action="{{ route('spt-srikandi.upload', $groupParams) }}" class="mt-2">
+                            @csrf
+
+                            <label for="replacement_pdf" class="form-label">
+                                Pilih File SPT
+                            </label>
+
+                            <div class="row g-2 align-items-stretch">
+                                <div class="col-12 col-md">
+                                    <input id="replacement_pdf" name="official_pdf" type="file" class="form-control"
+                                        accept="application/pdf,.pdf" required>
+                                </div>
+
+                                <div class="col-12 col-md-auto d-grid">
+                                    <button class="btn btn-identity">
+                                        <i class="bi bi-cloud-arrow-up-fill"></i> Unggah
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="form-text">
+                                Maksimal 10 MB. Periksa kembali PDF setelah diganti.
+                            </div>
+
+                            @error('official_pdf')
+                                <div class="text-danger small">{{ $message }}</div>
+                            @enderror
+                        </form>
+                    </details>
                 @endif
             @endif
 
-            <div class="mt-3">
-                <x-ui.document-preview :id="$processPreviewId" :document-number="$travel->spt_external_number ?: $travel->no_spt" standalone />
-            </div>
-            @if ($srikandiWorkflow->status === \App\Models\SptSrikandiWorkflow::STATUS_UPLOADED)
-                <div class="spt-share-actions mt-3">
-                    <form method="POST" action="{{ route('spt-srikandi.publish', $groupParams) }}" data-sim-confirm
-                        data-sim-confirm-title="Bagikan SPT kepada Pegawai?"
-                        data-sim-confirm-text="SPT akan tersedia bagi seluruh pegawai dan file tidak dapat diganti lagi."
-                        data-sim-confirm-button="Ya, bagikan">
-                        @csrf
-                        <button class="btn btn-success"><i class="bi bi-people"></i> Bagikan ke Pegawai</button>
-                    </form>
-                    <details class="mt-2" @if ($errors->has('official_pdf')) open @endif>
-                        <summary class="text-primary">Ganti File</summary>
-                        <form method="POST" enctype="multipart/form-data"
-                            action="{{ route('spt-srikandi.upload', $groupParams) }}"
-                            class="row g-2 align-items-end mt-2">
-                            @csrf
-                            <div class="col-12 col-md">
-                                <label for="replacement_pdf" class="form-label">PDF pengganti</label>
-                                <input id="replacement_pdf" name="official_pdf" type="file" class="form-control"
-                                    accept="application/pdf,.pdf" required>
-                                <div class="form-text">Maksimal 10 MB. Periksa kembali PDF setelah diganti.</div>
-                                @error('official_pdf')
-                                    <div class="text-danger small">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-12 col-md-auto d-grid"><button class="btn btn-outline-primary">Ganti
-                                    File</button></div>
-                        </form>
-                    </details>
-                </div>
-            @endif
+            <x-ui.document-preview :id="$processPreviewId" :document-number="$travel->spt_external_number ?: $travel->no_spt" standalone class="mt-3" />
+
         </div>
+
     </section>
 
     @include('travel.partials.officer-spt-details')

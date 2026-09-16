@@ -203,6 +203,13 @@ document.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+    const filterLink = event.target.closest("a[data-live-filter-link]");
+    if (filterLink) {
+        event.preventDefault();
+        loadResults(new URL(filterLink.href), { historyMode: "push" });
+        return;
+    }
+
     const reset = event.target.closest("a[data-live-filter-reset]");
     if (reset) {
         event.preventDefault();
