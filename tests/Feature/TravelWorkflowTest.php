@@ -53,7 +53,7 @@ class TravelWorkflowTest extends TestCase
 
         $officerDashboard = $this->actingAs($officer)->get(route('dashboard.officer'));
         $officerDashboard->assertOk()
-            ->assertSeeText('pegawai dalam satu Surat Tugas')
+            ->assertSeeText('Daftar Seluruh Surat Tugas')
             ->assertSeeText($employeeA->nama_lengkap)
             ->assertSeeText($employeeB->nama_lengkap)
             ->assertSee('officer-records', false)

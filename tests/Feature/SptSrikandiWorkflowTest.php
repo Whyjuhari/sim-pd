@@ -58,12 +58,8 @@ class SptSrikandiWorkflowTest extends TestCase
         ]))->assertOk()
             ->assertSee('Rincian SPT')
             ->assertSee('Unduh Draft')
-            ->assertSee('Saya sudah mengunggah Draft ke')
+            ->assertSee('name="official_pdf"', false)
             ->assertDontSee('Nomor Srikandi');
-
-        $this->actingAs($officer)->post(route('spt-srikandi.mark-sent', [
-            'sptGroupId' => $travel->spt_group_id,
-        ]))->assertSessionHasErrors('confirmed_uploaded');
 
         $this->actingAs($officer)->get(route('spt-srikandi.concept-document', [
             'sptGroupId' => $travel->spt_group_id,
@@ -87,21 +83,29 @@ class SptSrikandiWorkflowTest extends TestCase
         $this->assertSame(1, SptSrikandiVersion::query()->count());
         $this->assertSame($firstChecksum, SptSrikandiVersion::query()->firstOrFail()->docx_sha256);
 
-        $this->actingAs($officer)->post(route('spt-srikandi.mark-sent', [
+        $pdf = "%PDF-1.4\n1 0 obj\n<<>>\nendobj\nstartxref\n0\n%%EOF\n";
+
+        $official = UploadedFile::fake()->createWithContent('SPT-Srikandi.pdf', $pdf);
+        $officialNumber = '2.23/5622/LP.00.05/IX/2026';
+        $this->mock(SptOfficialNumberExtractor::class)
+            ->shouldReceive('extract')
+            ->zeroOrMoreTimes()
+            ->andReturn($officialNumber);
+        $this->actingAs($officer)->post(route('spt-srikandi.upload', [
             'sptGroupId' => $travel->spt_group_id,
         ]), [
-            'confirmed_uploaded' => '1',
+            'official_pdf' => $official,
         ])->assertSessionHasNoErrors();
 
         $workflow = SptSrikandiWorkflow::query()->firstOrFail();
-        $this->assertSame(SptSrikandiWorkflow::STATUS_WAITING, $workflow->status);
+        $this->assertSame(SptSrikandiWorkflow::STATUS_UPLOADED, $workflow->status);
         $this->assertNotNull($firstVersion->fresh()->submitted_at);
         $this->actingAs($officer)->get(route('travel-orders.show', [
             'sptGroupId' => $travel->spt_group_id,
         ]))->assertOk()
-            ->assertSee('Menunggu SPT Selesai')
-            ->assertSee('name="official_pdf"', false)
-            ->assertDontSee('name="external_number"', false);
+            ->assertSee("Nomor Naskah {$officialNumber} berhasil dibaca")
+            ->assertSee($officialNumber, false)
+            ->assertSee('Bagikan ke Pegawai');
         $this->actingAs($officer)->get(route('spt-srikandi.show', [
             'sptGroupId' => $travel->spt_group_id,
         ]))
@@ -139,10 +143,13 @@ class SptSrikandiWorkflowTest extends TestCase
             'sptGroupId' => $travel->spt_group_id,
         ]))->assertOk()->assertDownload();
         $this->assertSame(2, SptSrikandiVersion::query()->count());
-        $this->actingAs($officer)->post(route('spt-srikandi.mark-sent', [
+
+        $official2 = UploadedFile::fake()->createWithContent('SPT-Srikandi-2.pdf', $pdf);
+        $officialNumber2 = '2.23/5623/LP.00.05/IX/2026';
+        $this->actingAs($officer)->post(route('spt-srikandi.upload', [
             'sptGroupId' => $travel->spt_group_id,
         ]), [
-            'confirmed_uploaded' => '1',
+            'official_pdf' => $official2,
         ])->assertSessionHasNoErrors();
 
         $pdf = "%PDF-1.4\n1 0 obj\n<<>>\nendobj\nstartxref\n0\n%%EOF\n";
@@ -151,7 +158,7 @@ class SptSrikandiWorkflowTest extends TestCase
         $officialNumber = '2.23/5622/LP.00.05/IX/2026';
         $this->mock(SptOfficialNumberExtractor::class)
             ->shouldReceive('extract')
-            ->once()
+            ->zeroOrMoreTimes()
             ->andReturn($officialNumber);
         $this->actingAs($officer)->post(route('spt-srikandi.upload', [
             'sptGroupId' => $travel->spt_group_id,

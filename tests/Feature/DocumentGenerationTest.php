@@ -162,7 +162,8 @@ class DocumentGenerationTest extends TestCase
         $this->assertSame(1, $appendixTables->length);
         $appendixTable = $appendixTables->item(0);
         $this->assertNotNull($appendixTable);
-        $appendixCells = $generatedXpath->query('./w:tr/w:tc', $appendixTable);
+        // Baris tanda tangan kini menyatu di tabel lampiran; hitung hanya baris grid pegawai (5 kolom).
+        $appendixCells = $generatedXpath->query('./w:tr[count(w:tc) = 5]/w:tc', $appendixTable);
         $this->assertSame(20, $appendixCells->length);
 
         foreach ($appendixCells as $appendixCell) {
@@ -179,7 +180,7 @@ class DocumentGenerationTest extends TestCase
         $this->assertSame(
             0,
             $generatedXpath->query(
-                './/w:r[w:t and not(w:rPr/w:sz[@w:val="21"])]',
+                './w:tr[count(w:tc) = 5]//w:r[w:t and not(w:rPr/w:sz[@w:val="21"])]',
                 $appendixTable,
             )->length,
             'Seluruh teks tabel pegawai harus konsisten pada 10,5 pt.'

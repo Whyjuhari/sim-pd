@@ -21,7 +21,7 @@ const optionsFor = (select) => {
     if (select.dataset.sptSearchable === "employees") {
         return {
             ...commonOptions,
-            closeDropdownOnSelect: false,
+            closeDropdownOnSelect: true,
             labelId: "employeeSelectLabel",
             placeholder: true,
             placeholderValue: placeholder,

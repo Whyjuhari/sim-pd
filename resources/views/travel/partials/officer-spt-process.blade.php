@@ -4,6 +4,8 @@
         ->first(fn($version) => filled($version->revision_reason));
     $groupParams = ['sptGroupId' => $travel->spt_group_id] + $detailContext;
     $needsRevision = $srikandiWorkflow->status === \App\Models\SptSrikandiWorkflow::STATUS_REVISION;
+    $uploadFormReady = ($conceptReady ?? false)
+        || $srikandiWorkflow->status === \App\Models\SptSrikandiWorkflow::STATUS_WAITING;
 @endphp
 
 <div class="officer-spt-detail" data-officer-spt-process>
@@ -37,63 +39,53 @@
         <div class="card-body">
             @if (in_array(
                     $srikandiWorkflow->status,
-                    [\App\Models\SptSrikandiWorkflow::STATUS_DRAFT, \App\Models\SptSrikandiWorkflow::STATUS_REVISION],
+                    [\App\Models\SptSrikandiWorkflow::STATUS_DRAFT, \App\Models\SptSrikandiWorkflow::STATUS_REVISION, \App\Models\SptSrikandiWorkflow::STATUS_WAITING],
                     true))
                 @if ($needsRevision && $revisionVersion)
-                    <p class="text-warning-emphasis"><strong>Alasan perbaikan:</strong>
+                    <p class="text-warning-emphasis mb-3"><strong>Alasan perbaikan:</strong>
                         {{ $revisionVersion->revision_reason }}</p>
                 @endif
-                <p>{{ $needsRevision ? 'Perbaiki data melalui Rincian SPT di bawah, lalu periksa dan unduh Word.' : 'Periksa draft dengan unduh file Word.' }}
-                </p>
-                <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-outline-secondary" data-document-preview-trigger
-                        data-document-url="{{ route('documents.surat-tugas', ['id' => $travel->id]) }}"
-                        data-document-label="Konsep Surat Perintah Tugas"
-                        data-document-filename="Konsep_SPT_{{ $safeReference }}.pdf"
-                        aria-controls="{{ $processPreviewId }}" aria-expanded="false"><i class="bi bi-archive"></i>
-                        Lihat
-                        Draft</button>
-                    <a class="btn {{ $conceptReady ? 'btn-outline-primary' : 'btn-primary' }} d-inline-flex align-items-center"
-                        data-spt-concept-download data-download-name="Konsep_SPT_{{ $safeReference }}.docx"
-                        href="{{ route('spt-srikandi.concept-document', $groupParams) }}"><i
-                            class="bi bi-file-earmark-pdf"></i> <span class="mx-1">Unduh Draft</span></a>
+                <div class="row g-3 align-items-stretch">
+                     <div class="col-12 col-md-6 d-flex flex-column justify-content-between">
+                         <div>
+                             <p class="mb-2">{{ $needsRevision ? 'Perbaiki data melalui Rincian SPT di bawah, lalu periksa dan unduh Word.' : 'Periksa draft dengan unduh file Word.' }}</p>
+                             <div class="d-flex flex-wrap gap-2">
+                                 <button type="button" class="btn btn-outline-secondary" data-document-preview-trigger
+                                     data-document-url="{{ route('documents.surat-tugas', ['id' => $travel->id]) }}"
+                                     data-document-label="Konsep Surat Perintah Tugas"
+                                     data-document-filename="Konsep_SPT_{{ $safeReference }}.pdf"
+                                     aria-controls="{{ $processPreviewId }}" aria-expanded="false"><i class="bi bi-archive"></i>
+                                     Lihat
+                                     Draft</button>
+                                 <a class="btn btn-outline-primary d-inline-flex align-items-center"
+                                     data-spt-concept-download data-download-name="Konsep_SPT_{{ $safeReference }}.docx"
+                                     href="{{ route('spt-srikandi.concept-document', $groupParams) }}"><i
+                                         class="bi bi-file-word-fill"></i> <span class="mx-1">Unduh Draft</span></a>
+                             </div>
+                         </div>
+                         <p class="small text-muted mt-2 mb-0" data-spt-concept-status aria-live="polite"></p>
+                     </div>
+                     <div class="col-12 col-md-6 border-start-md ps-md-3">
+                         <form method="POST" enctype="multipart/form-data"
+                             action="{{ route('spt-srikandi.upload', $groupParams) }}" class="h-100 d-flex flex-column justify-content-between @if (! $uploadFormReady && ! $errors->has('official_pdf')) d-none @endif"
+                             data-spt-official-upload-form>
+                             @csrf
+                             <div>
+                                 <label for="official_pdf" class="form-label fw-semibold">SPT Resmi</label>
+                                 <input id="official_pdf" name="official_pdf" type="file" class="form-control"
+                                     accept="application/pdf,.pdf" required>
+                                 <div class="form-text">File PDF maksimal 10 MB.</div>
+                                 @error('official_pdf')
+                                     <div class="text-danger small">{{ $message }}</div>
+                                 @enderror
+                             </div>
+                             <div class="mt-2">
+                                 <button class="btn btn-primary"><i class="bi bi-upload"></i>
+                                     Upload SPT</button>
+                             </div>
+                         </form>
+                     </div>
                 </div>
-                <p class="small text-muted mt-2 mb-0" data-spt-concept-status aria-live="polite"></p>
-                <noscript>
-                    <p class="small">Setelah mengunduh Word, <a
-                            href="{{ route('travel-orders.show', $groupParams) }}">muat ulang halaman</a> untuk
-                        mencatat pengiriman.</p>
-                </noscript>
-                <form method="POST" action="{{ route('spt-srikandi.mark-sent', $groupParams) }}" data-spt-send-form
-                    @class(['mt-3', 'd-none' => !$conceptReady])>
-                    @csrf
-                    <fieldset data-spt-send-controls @disabled(!$conceptReady)>
-                        <div class="form-check mb-2">
-                            <input id="confirmed_uploaded" name="confirmed_uploaded" value="1" type="checkbox"
-                                class="form-check-input" required>
-                            <label for="confirmed_uploaded" class="form-check-label">Saya sudah mengunggah Draft ke
-                                SRIKANDI.</label>
-                        </div>
-                        <button class="btn btn-success"><i class="bi bi-send-check"></i> Sudah Dikirim</button>
-                    </fieldset>
-                </form>
-            @elseif ($srikandiWorkflow->status === \App\Models\SptSrikandiWorkflow::STATUS_WAITING)
-                <form method="POST" enctype="multipart/form-data"
-                    action="{{ route('spt-srikandi.upload', $groupParams) }}" class="row g-3 align-items-end">
-                    @csrf
-                    <div class="col-12 col-md">
-                        <label for="official_pdf" class="form-label">SPT Resmi</label>
-                        <input id="official_pdf" name="official_pdf" type="file" class="form-control"
-                            accept="application/pdf,.pdf" required>
-                        <div class="form-text">File PDF maksimal 10 MB.</div>
-                        @error('official_pdf')
-                            <div class="text-danger small">{{ $message }}</div>
-                        @enderror
-                        <button class="btn btn-primary mt-2"><i class="bi bi-upload"></i>
-                            Upload SPT</button>
-
-                    </div>
-                </form>
             @else
                 @if ($processComplete)
                     <p class="small text-muted">

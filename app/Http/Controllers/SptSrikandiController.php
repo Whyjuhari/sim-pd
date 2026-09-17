@@ -285,9 +285,9 @@ class SptSrikandiController extends Controller
                 ->where('spt_group_id', $sptGroupId)
                 ->lockForUpdate()
                 ->firstOrFail();
-            if ($workflow->status !== SptSrikandiWorkflow::STATUS_WAITING) {
+            if (! in_array($workflow->status, [SptSrikandiWorkflow::STATUS_WAITING, SptSrikandiWorkflow::STATUS_UPLOADED], true)) {
                 throw ValidationException::withMessages([
-                    'revision_reason' => 'Perbaikan hanya dapat dicatat ketika SPT sedang menunggu diproses.',
+                    'revision_reason' => 'Perbaikan hanya dapat dicatat ketika SPT sedang menunggu diproses atau sudah diunggah.',
                 ]);
             }
 
@@ -324,11 +324,13 @@ class SptSrikandiController extends Controller
 
         $workflow = $this->workflow($sptGroupId);
         if (! in_array($workflow->status, [
+            SptSrikandiWorkflow::STATUS_DRAFT,
+            SptSrikandiWorkflow::STATUS_REVISION,
             SptSrikandiWorkflow::STATUS_WAITING,
             SptSrikandiWorkflow::STATUS_UPLOADED,
         ], true)) {
             throw ValidationException::withMessages([
-                'official_pdf' => 'SPT yang sudah jadi hanya dapat diunggah setelah konsep ditandai sudah dikirim.',
+                'official_pdf' => 'SPT yang sudah jadi tidak dapat diunggah pada status saat ini.',
             ]);
         }
 
@@ -376,6 +378,8 @@ class SptSrikandiController extends Controller
 
                 if (
                     ! in_array($workflow->status, [
+                        SptSrikandiWorkflow::STATUS_DRAFT,
+                        SptSrikandiWorkflow::STATUS_REVISION,
                         SptSrikandiWorkflow::STATUS_WAITING,
                         SptSrikandiWorkflow::STATUS_UPLOADED,
                     ], true) || $travels->isEmpty()
@@ -387,6 +391,25 @@ class SptSrikandiController extends Controller
                     throw ValidationException::withMessages([
                         'official_pdf' => 'PDF resmi tidak dapat disimpan karena status SPT sudah berubah.',
                     ]);
+                }
+
+                if (in_array($workflow->status, [SptSrikandiWorkflow::STATUS_DRAFT, SptSrikandiWorkflow::STATUS_REVISION], true)) {
+                    $version = SptSrikandiVersion::query()
+                        ->where('workflow_id', $workflow->id)
+                        ->whereNull('submitted_at')
+                        ->lockForUpdate()
+                        ->latest('version_number')
+                        ->first();
+                    if ($version) {
+                        $version->update([
+                            'submitted_by' => (int) $request->user()->id,
+                            'submitted_at' => now(),
+                        ]);
+                    }
+                    if (! $workflow->submitted_at) {
+                        $workflow->submitted_by = (int) $request->user()->id;
+                        $workflow->submitted_at = now();
+                    }
                 }
 
                 $checksumUsed = SptSrikandiWorkflow::query()

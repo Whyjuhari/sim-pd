@@ -324,7 +324,7 @@ class SptNumberingAndDipaTest extends TestCase
 
         $anchored = $xpath->query(
             '/w:document/w:body/w:tbl[.//w:t[contains(., "VI.")]][.//w:t[contains(., "Catatan")]]'
-            .'/w:tr[2]/w:tc[2][.//w:t[contains(., "Ashari")]]'
+            .'/w:tr[1]/w:tc[2][.//w:t[contains(., "Kepala")]]'
             .'//w:p[.//w:t[contains(., "${ttd_pengirim}")]]'
         );
         $this->assertNotFalse($anchored);

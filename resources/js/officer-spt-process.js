@@ -3,25 +3,13 @@ const processPanel = document.querySelector('[data-officer-spt-process]');
 
 if (processPanel) {
     const download = processPanel.querySelector('[data-spt-concept-download]');
-    const sendForm = processPanel.querySelector('[data-spt-send-form]');
-    const controls = processPanel.querySelector('[data-spt-send-controls]');
     const status = processPanel.querySelector('[data-spt-concept-status]');
+    const formUploadSection = processPanel.querySelector('[data-spt-official-upload-form]');
     const setStatus = (message) => {
         if (status) status.textContent = message;
     };
     let pending = null;
     const downloadUrls = new Set();
-
-    let submitted = false;
-    sendForm?.addEventListener('submit', (event) => {
-        if (submitted) {
-            event.preventDefault();
-            return;
-        }
-        if (!sendForm.checkValidity()) return;
-        submitted = true;
-        sendForm.querySelector('button[type="submit"], button:not([type])')?.setAttribute('disabled', '');
-    });
 
     download?.addEventListener('click', async (event) => {
         // Preserve native open/save actions and the no-JavaScript download link.
@@ -29,9 +17,7 @@ if (processPanel) {
         event.preventDefault();
         if (pending) return;
 
-        const wasDisabled = controls?.disabled ?? false;
         pending = new AbortController();
-        if (controls) controls.disabled = true;
         download.setAttribute('aria-disabled', 'true');
         download.setAttribute('aria-busy', 'true');
         try {
@@ -59,12 +45,10 @@ if (processPanel) {
             link.click();
             link.remove();
             window.setTimeout(() => { URL.revokeObjectURL(url); downloadUrls.delete(url); }, 30000);
-            if (controls) controls.disabled = false;
-            sendForm?.classList.remove('d-none');
             download.classList.replace('btn-primary', 'btn-outline-primary');
-            setStatus(`Unduhan Word${/^\d+$/.test(version || '') ? ` versi ${version}` : ''} dimulai. Setelah diunggah ke SRIKANDI, catat pengiriman di bawah.`);
+            setStatus(`Unduhan Word${/^\d+$/.test(version || '') ? ` versi ${version}` : ''} dimulai.`);
+            formUploadSection?.classList.remove('d-none');
         } catch (error) {
-            if (controls) controls.disabled = wasDisabled;
             if (error.name !== 'AbortError') {
                 setStatus(error instanceof TypeError
                     ? 'Koneksi terputus. Periksa koneksi lalu coba unduh kembali.' : error.message);

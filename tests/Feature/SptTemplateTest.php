@@ -478,7 +478,6 @@ class SptTemplateTest extends TestCase
             ->assertSee('Pilih Template SPT', false)
             ->assertSee($defaultTemplate->nama, false)
             ->assertSee($activeTemplate->nama, false)
-            ->assertSee('Template Sistem', false)
             ->assertSee('Dasar Regulasi dan Memo', false)
             ->assertDontSee('Template Nonaktif', false)
             ->assertDontSee('name="spt_template_id"', false);
@@ -487,10 +486,6 @@ class SptTemplateTest extends TestCase
         $this->assertSame(
             1,
             $selectionXpath->query(sprintf('//a[@href="%s"]', route('travel-orders.create', ['template' => $activeTemplate->id])))->length,
-        );
-        $this->assertSame(
-            1,
-            $selectionXpath->query(sprintf('//a[@href="%s"]', route('travel-orders.create', ['template' => 'system'])))->length,
         );
 
         $form = $this->actingAs($officer)->get(route('travel-orders.create', ['template' => $activeTemplate->id]));

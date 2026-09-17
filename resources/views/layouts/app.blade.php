@@ -37,7 +37,7 @@
             <a class="navbar-brand app-brand me-auto" href="{{ route('dashboard') }}">
                 <span class="app-logo-wrap"><img src="{{ asset('assets/images/logo.png') }}" class="app-logo"
                         alt="Logo BPVP Pangkep"></span>
-                <span class="app-brand-copy"><strong>Sistem Informasi</strong><small>Perjalanan Dinas</small></span>
+                <span class="app-brand-copy"><strong>SIM_PD</strong><small>Bpvp Pangkep</small></span>
             </a>
 
             <div class="app-user-tools">

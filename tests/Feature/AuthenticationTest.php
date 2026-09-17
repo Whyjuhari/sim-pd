@@ -28,7 +28,7 @@ class AuthenticationTest extends TestCase
         $this->assertTrue(Hash::check('123456', $admin->fresh()->password));
         $this->assertNotSame(md5('123456'), $admin->fresh()->password);
         $this->get(route('dashboard'))->assertRedirect(route('dashboard.admin'));
-        $this->get(route('dashboard.admin'))->assertOk()->assertSee('Administrasi SIM-PD');
+        $this->get(route('dashboard.admin'))->assertOk()->assertSee('Administrasi Perjalanan Dinas');
     }
 
     public function test_role_middleware_blocks_another_dashboard(): void

@@ -14,7 +14,18 @@ abstract class TestCase extends BaseTestCase
 
     protected function setUp(): void
     {
+        if (file_exists(dirname(__DIR__).'/bootstrap/cache/config.php')) {
+            $this->fail(
+                'Config sedang di-cache (bootstrap/cache/config.php), sehingga override phpunit.xml diabaikan '
+                .'dan test akan memakai database MySQL asli. Jalankan `php artisan config:clear` (atau `composer test`) dulu.'
+            );
+        }
+
         parent::setUp();
+
+        if (config('database.default') !== 'sqlite' || config('database.connections.sqlite.database') !== ':memory:') {
+            $this->fail('Test harus memakai SQLite in-memory (lihat phpunit.xml) agar tidak menyentuh database asli.');
+        }
 
         $this->documentCacheTestDirectory = storage_path(
             'framework/testing/document-cache-'.bin2hex(random_bytes(5))

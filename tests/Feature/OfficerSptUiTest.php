@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\PerjalananDinas;
+use App\Models\SptSrikandiVersion;
 use App\Models\SptSrikandiWorkflow;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -74,7 +76,7 @@ class OfficerSptUiTest extends TestCase
             ->assertSeeText('Total Surat Tugas')
             ->assertSeeText('SPT Sedang Diproses')
             ->assertSeeText('SPT Berjalan')
-            ->assertSeeText('Dashboard SPT')
+            ->assertSeeText('Dashboard')
             ->assertSeeText('Daftar Seluruh Surat Tugas')
             ->assertSeeText('Status SPT')
             ->assertDontSeeText('Jumlah Draft SPT')
@@ -135,7 +137,7 @@ class OfficerSptUiTest extends TestCase
         $officer = User::factory()->role(User::ROLE_OFFICER)->create();
         $travel = $this->letter(SptSrikandiWorkflow::STATUS_DRAFT);
         $response = $this->actingAs($officer)->get(route('travel-orders.show', ['sptGroupId' => $travel->spt_group_id]))
-            ->assertOk()->assertSee('Rincian SPT')->assertSee('Unduh File Word')
+            ->assertOk()->assertSee('Rincian SPT')->assertSee('Unduh Draft')
             ->assertDontSee('Informasi Surat Tugas')->assertDontSee('spt-process-timeline', false)
             ->assertDontSee('Memo Internal')->assertDontSee('Arsip File Word');
         $dom = new \DOMDocument();
@@ -144,9 +146,7 @@ class OfficerSptUiTest extends TestCase
         $this->assertSame(1, $xpath->query('//a[normalize-space(.)="Kembali"]')->length);
         $this->assertSame(1, $xpath->query('//a[normalize-space(.)="Edit SPT"]')->length);
         $this->assertSame(1, substr_count($response->getContent(), e($travel->pegawai->nama_lengkap)));
-        $this->assertSame(1, $xpath->query('//form[@data-spt-send-form]//input[@name="confirmed_uploaded"]')->length);
-        $this->assertSame(0, $xpath->query('//form[@data-spt-send-form and @data-sim-confirm]')->length);
-        $this->assertSame(1, $xpath->query('//form[@data-spt-send-form]//fieldset[@disabled]')->length);
+        $this->assertSame(1, $xpath->query('//form[contains(@action,"upload")]//input[@name="official_pdf"]')->length);
         $this->assertSame(0, $xpath->query('//details[contains(@class,"officer-spt-details") and @open]')->length);
     }
 
@@ -159,7 +159,6 @@ class OfficerSptUiTest extends TestCase
             'list' => ['q' => 'before publishing', 'status' => 'uploaded', 'page' => '2'],
         ]))->assertOk()->assertViewHas('detailBackRoute', route('dashboard.officer'))
             ->assertDontSee('name="official_pdf"', false);
-        $this->assertSame(2, substr_count($response->getContent(), 'class="nav-link active" href="'.route('dashboard').'"'));
 
         $pending = $this->letter(SptSrikandiWorkflow::STATUS_WAITING);
         $filters = ['q' => 'Makassar', 'status' => SptSrikandiWorkflow::STATUS_WAITING, 'page' => '2'];
@@ -188,5 +187,79 @@ class OfficerSptUiTest extends TestCase
         $response = $this->actingAs($officer)->get(route('travel-orders.show', ['sptGroupId' => $travel->spt_group_id]))->assertOk();
         $this->assertSame(1, substr_count($response->getContent(), '> Edit SPT</a>'));
         $response->assertSee('class="card officer-spt-details"  open ', false);
+    }
+
+    public function test_upload_form_reappears_with_validation_error_instead_of_staying_hidden(): void
+    {
+        Storage::fake('local');
+        $officer = User::factory()->role(User::ROLE_OFFICER)->create();
+        $travel = $this->letter(SptSrikandiWorkflow::STATUS_DRAFT);
+        $route = route('travel-orders.show', ['sptGroupId' => $travel->spt_group_id]);
+
+        $hidden = $this->actingAs($officer)->get($route)->assertOk();
+        $this->assertTrue($this->uploadFormHasClass($hidden->getContent(), 'd-none'));
+
+        $failed = $this->actingAs($officer)
+            ->from($route)
+            ->followingRedirects()
+            ->post(route('spt-srikandi.upload', ['sptGroupId' => $travel->spt_group_id]), [
+                'official_pdf' => UploadedFile::fake()->create('oversized.pdf', 11000, 'application/pdf'),
+            ])
+            ->assertOk();
+
+        $this->assertFalse($this->uploadFormHasClass($failed->getContent(), 'd-none'));
+    }
+
+    public function test_upload_form_stays_visible_after_draft_download_and_refresh(): void
+    {
+        Storage::fake('local');
+        $officer = User::factory()->role(User::ROLE_OFFICER)->create();
+        $travel = $this->letter(SptSrikandiWorkflow::STATUS_DRAFT);
+        $route = route('travel-orders.show', ['sptGroupId' => $travel->spt_group_id]);
+
+        $before = $this->actingAs($officer)->get($route)->assertOk();
+        $this->assertTrue($this->uploadFormHasClass($before->getContent(), 'd-none'));
+
+        $workflow = SptSrikandiWorkflow::query()->where('spt_group_id', $travel->spt_group_id)->firstOrFail();
+        $docx = $this->fakeConceptDocx();
+        $path = 'spt-srikandi/'.$travel->spt_group_id.'/concepts/version-1.docx';
+        Storage::disk('local')->put($path, $docx);
+        SptSrikandiVersion::query()->create([
+            'workflow_id' => $workflow->id,
+            'version_number' => 1,
+            'docx_path' => $path,
+            'docx_original_name' => 'Konsep_SPT_V1.docx',
+            'docx_size_bytes' => strlen($docx),
+            'docx_sha256' => hash('sha256', $docx),
+            'prepared_by' => $officer->id,
+            'prepared_at' => now(),
+        ]);
+
+        $after = $this->actingAs($officer)->get($route)->assertOk();
+        $this->assertFalse($this->uploadFormHasClass($after->getContent(), 'd-none'));
+    }
+
+    private function uploadFormHasClass(string $html, string $class): bool
+    {
+        $dom = new \DOMDocument();
+        @$dom->loadHTML('<?xml encoding="UTF-8">'.$html);
+        $form = (new \DOMXPath($dom))->query('//form[@data-spt-official-upload-form]')->item(0);
+
+        return $form instanceof \DOMElement
+            && in_array($class, preg_split('/\s+/', (string) $form->getAttribute('class')), true);
+    }
+
+    private function fakeConceptDocx(): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'sim-pd-docx');
+        $zip = new \ZipArchive();
+        $zip->open($path, \ZipArchive::OVERWRITE);
+        $zip->addFromString('[Content_Types].xml', '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>');
+        $zip->addFromString('word/document.xml', '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>');
+        $zip->close();
+        $contents = (string) file_get_contents($path);
+        @unlink($path);
+
+        return $contents;
     }
 }

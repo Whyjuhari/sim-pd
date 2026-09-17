@@ -66,7 +66,7 @@ class SweetAlertDialogTest extends TestCase
         preg_match_all('/\bdata-sim-confirm(?=\s|>)/', $confirmationMarkup, $confirmationAttributes);
 
         // Sending uses one explicit, server-validated checkbox, not a second popup.
-        $this->assertCount(17, $confirmationAttributes[0]);
+        $this->assertCount(16, $confirmationAttributes[0]);
         $this->assertStringContainsString('data-realization-preview', $confirmationMarkup);
         $this->assertStringContainsString("Swal.fire", $confirmationMarkup);
         $this->assertStringContainsString('data-existing-evidence', $confirmationMarkup);
