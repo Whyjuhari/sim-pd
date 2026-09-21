@@ -8,7 +8,7 @@ SIM-PD adalah sistem pengelolaan perjalanan dinas berbasis Laravel 13 dan Bootst
 - Composer 2 dan Node.js/npm.
 - MySQL 8 atau MariaDB yang kompatibel.
 - LibreOffice pada server yang akan membuat PDF.
-- Python 3.10 atau lebih baru dengan `pyHanko` untuk memeriksa integritas tanda tangan elektronik PDF resmi.
+- `pdftotext` (paket `poppler-utils`) untuk membaca Nomor Naskah pada PDF resmi.
 
 ## Instalasi lokal
 

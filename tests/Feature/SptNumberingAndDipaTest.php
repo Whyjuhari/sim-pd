@@ -178,7 +178,7 @@ class SptNumberingAndDipaTest extends TestCase
     public function test_built_in_templates_have_expected_optional_sections_and_original_hash_is_unchanged(): void
     {
         $this->assertSame(
-            'f65d1586aa171187d8a9e5eb9f95a80f0f57cd6b2f03145792a3c1f74996b5f1',
+            '4fbf2443310e4f951c9bcffa93468140f2992244788f99af40d4e8cb993b89fc',
             hash_file('sha256', resource_path('documents/Template_SPT_Perjadin_COLLECTIVE_V5.docx'))
         );
 

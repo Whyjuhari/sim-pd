@@ -22,7 +22,6 @@
 /storage/*.key
 /storage/pail
 /vendor
-/.venv-pdf-signature/
 /tmp
 
 # User uploads stay outside Git; retain directory placeholders only.

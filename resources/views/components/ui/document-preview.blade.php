@@ -25,7 +25,7 @@
                 data-document-preview-download>
                 <i class="bi bi-download"></i>
                 <span class="mx-1">
-                    Unduh Docs
+                    Unduh PDF
                 </span>
             </a>
             <button type="button" class="btn btn-sm btn-outline-secondary" data-document-preview-close><i
