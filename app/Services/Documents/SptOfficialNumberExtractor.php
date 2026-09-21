@@ -10,7 +10,6 @@ class SptOfficialNumberExtractor
 {
     public function __construct(
         private readonly SptOfficialNumberParser $parser,
-        private readonly SptPdfSignatureVerifier $signatureVerifier,
     ) {}
 
     public function extract(string $pdfPath): string
@@ -18,8 +17,6 @@ class SptOfficialNumberExtractor
         if (! is_file($pdfPath)) {
             throw new SptOfficialDocumentException('PDF resmi tidak ditemukan untuk dibaca.');
         }
-
-        $this->signatureVerifier->assertValid($pdfPath);
 
         $binary = trim((string) config('sim_pd.documents.pdf_text.binary', 'pdftotext'));
         if ($binary === '') {
